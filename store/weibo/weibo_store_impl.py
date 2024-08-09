@@ -144,7 +144,9 @@ class WeiboJsonStoreImplement(AbstractStore):
     words_store_path: str = "data/weibo/words"
     lock = asyncio.Lock()
     file_count: int = calculate_number_of_files(json_store_path)
-    WordCloud = words.AsyncWordCloudGenerator()
+
+    def __init__(self):
+        self.WordCloud = words.AsyncWordCloudGenerator()
 
     def make_save_file_name(self, store_type: str) -> (str, str):
         """

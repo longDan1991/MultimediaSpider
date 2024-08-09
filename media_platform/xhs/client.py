@@ -5,15 +5,17 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
-from playwright.async_api import BrowserContext, Page
 
 import config
 from base.base_crawler import AbstractApiClient
+from constant.xiaohongshu import XHS_SIGN_SERVER_URL, XHS_API_URL, XHS_INDEX_URL
 from tools import utils
+from model.m_xiaohongshu import XhsSignResponse
 
-from .exception import DataFetchError, IPBlockError
+
+from .exception import DataFetchError, IPBlockError, NeedVerifyError, SignError, ErrorEnum
 from .field import SearchNoteType, SearchSortType
-from .help import get_search_id, sign
+from .help import get_search_id
 
 
 class XiaoHongShuClient(AbstractApiClient):
@@ -21,22 +23,13 @@ class XiaoHongShuClient(AbstractApiClient):
             self,
             timeout=10,
             proxies=None,
-            *,
-            headers: Dict[str, str],
-            playwright_page: Page,
-            cookie_dict: Dict[str, str],
+            cookies=None,
+            user_agent=None,
     ):
         self.proxies = proxies
         self.timeout = timeout
-        self.headers = headers
-        self._host = "https://edith.xiaohongshu.com"
-        self._domain = "https://www.xiaohongshu.com"
-        self.IP_ERROR_STR = "网络连接异常，请检查网络设置或重启试试"
-        self.IP_ERROR_CODE = 300012
-        self.NOTE_ABNORMAL_STR = "笔记状态异常，请稍后查看"
-        self.NOTE_ABNORMAL_CODE = -510001
-        self.playwright_page = playwright_page
-        self.cookie_dict = cookie_dict
+        self._user_agent = user_agent or utils.get_user_agent()
+        self._cookies = cookies
 
     async def _pre_headers(self, url: str, data=None) -> Dict:
         """
@@ -48,23 +41,37 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        encrypt_params = await self.playwright_page.evaluate("([url, data]) => window._webmsxyw(url,data)", [url, data])
-        local_storage = await self.playwright_page.evaluate("() => window.localStorage")
-        signs = sign(
-            a1=self.cookie_dict.get("a1", ""),
-            b1=local_storage.get("b1", ""),
-            x_s=encrypt_params.get("X-s", ""),
-            x_t=str(encrypt_params.get("X-t", ""))
-        )
-
-        headers = {
-            "X-S": signs["x-s"],
-            "X-T": signs["x-t"],
-            "x-S-Common": signs["x-s-common"],
-            "X-B3-Traceid": signs["x-b3-traceid"]
+        sign_server_uri = "/xhs/sign"
+        post_data = {
+            "uri": url,
+            "data": data,
+            "cookies": self._cookies
         }
-        self.headers.update(headers)
-        return self.headers
+        async with httpx.AsyncClient(base_url=XHS_SIGN_SERVER_URL) as client:
+            response = await client.request(
+                "POST", sign_server_uri, timeout=60, json=post_data
+            )
+        xhs_sign_resp = XhsSignResponse(**response.json())
+        if not xhs_sign_resp.isok:
+            raise SignError(f"从签名服务器获取签名失败，原因：{xhs_sign_resp.isok}")
+        headers = {
+            "X-S": xhs_sign_resp.data.x_s,
+            "X-T": xhs_sign_resp.data.x_t,
+            "x-S-Common": xhs_sign_resp.data.x_s_common,
+            "X-B3-Traceid": xhs_sign_resp.data.x_b3_traceid,
+        }
+        headers.update(self.headers)
+        return headers
+
+    @property
+    def headers(self):
+        return {
+            "User-Agent": self._user_agent,
+            "Content-Type": "application/json;charset=UTF-8",
+            "Accept": "application/json, text/plain, */*",
+            "Cookie": self._cookies
+        }
+
 
     async def request(self, method, url, **kwargs) -> Union[str, Any]:
         """
@@ -77,25 +84,31 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        # return response.text
-        return_response = kwargs.pop('return_response', False)
-
         async with httpx.AsyncClient(proxies=self.proxies) as client:
             response = await client.request(
                 method, url, timeout=self.timeout,
                 **kwargs
             )
+        try:
+            data = response.json()
+        except json.decoder.JSONDecodeError:
+            return response
 
-        if return_response:
-            return response.text
-
-        data: Dict = response.json()
-        if data["success"]:
-            return data.get("data", data.get("success", {}))
-        elif data["code"] == self.IP_ERROR_CODE:
-            raise IPBlockError(self.IP_ERROR_STR)
+        if response.status_code == 471 or response.status_code == 461:
+            # someday someone maybe will bypass captcha
+            verify_type = response.headers['Verifytype']
+            verify_uuid = response.headers['Verifyuuid']
+            raise NeedVerifyError(
+                f"出现验证码，请求失败，Verifytype: {verify_type}，Verifyuuid: {verify_uuid}",
+                response=response, verify_type=verify_type, verify_uuid=verify_uuid)
+        elif data.get("success"):
+            return data.get("data", data.get("success"))
+        elif data.get("code") == ErrorEnum.IP_BLOCK.value.code:
+            raise IPBlockError(ErrorEnum.IP_BLOCK.value.msg, response=response)
+        elif data.get("code") == ErrorEnum.SIGN_FAULT.value.code:
+            raise SignError(ErrorEnum.SIGN_FAULT.value.msg, response=response)
         else:
-            raise DataFetchError(data.get("msg", None))
+            raise DataFetchError(data, response=response)
 
     async def get(self, uri: str, params=None) -> Dict:
         """
@@ -112,7 +125,7 @@ class XiaoHongShuClient(AbstractApiClient):
             final_uri = (f"{uri}?"
                          f"{urlencode(params)}")
         headers = await self._pre_headers(final_uri)
-        return await self.request(method="GET", url=f"{self._host}{final_uri}", headers=headers)
+        return await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
 
     async def post(self, uri: str, data: dict) -> Dict:
         """
@@ -126,7 +139,7 @@ class XiaoHongShuClient(AbstractApiClient):
         """
         headers = await self._pre_headers(uri, data)
         json_str = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
-        return await self.request(method="POST", url=f"{self._host}{uri}",
+        return await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
                                   data=json_str, headers=headers)
 
     async def get_note_media(self, url: str) -> Union[bytes, None]:
@@ -156,18 +169,11 @@ class XiaoHongShuClient(AbstractApiClient):
             ping_flag = False
         return ping_flag
 
-    async def update_cookies(self, browser_context: BrowserContext):
+    async def update_cookies(self, cookies: str):
         """
-        API客户端提供的更新cookies方法，一般情况下登录成功后会调用此方法
-        Args:
-            browser_context: 浏览器上下文对象
-
-        Returns:
-
+        更新cookies
         """
-        cookie_str, cookie_dict = utils.convert_cookies(await browser_context.cookies())
-        self.headers["Cookie"] = cookie_str
-        self.cookie_dict = cookie_dict
+        self._cookies = cookies
 
     async def get_note_by_keyword(
             self, keyword: str,
@@ -353,7 +359,7 @@ class XiaoHongShuClient(AbstractApiClient):
         eg: https://www.xiaohongshu.com/user/profile/59d8cb33de5fb4696bf17217
         """
         uri = f"/user/profile/{user_id}"
-        html_content = await self.request("GET", self._domain + uri, return_response=True, headers=self.headers)
+        html_content = await self.request("GET", XHS_INDEX_URL + uri, return_response=True)
         match = re.search(r'<script>window.__INITIAL_STATE__=(.+)<\/script>', html_content, re.M)
 
         if match is None:

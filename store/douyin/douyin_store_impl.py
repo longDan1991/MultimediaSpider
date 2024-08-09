@@ -162,15 +162,18 @@ class DouyinDbStoreImplement(AbstractStore):
         else:
             await update_creator_by_user_id(user_id, creator)
 
+
 class DouyinJsonStoreImplement(AbstractStore):
     json_store_path: str = "data/douyin/json"
     words_store_path: str = "data/douyin/words"
 
     lock = asyncio.Lock()
     file_count: int = calculate_number_of_files(json_store_path)
-    WordCloud = words.AsyncWordCloudGenerator()
 
-    def make_save_file_name(self, store_type: str) -> (str,str):
+    def __init__(self):
+        self.WordCloud = words.AsyncWordCloudGenerator()
+
+    def make_save_file_name(self, store_type: str) -> (str, str):
         """
         make save file name by store type
         Args:
@@ -184,6 +187,7 @@ class DouyinJsonStoreImplement(AbstractStore):
             f"{self.json_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.json",
             f"{self.words_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}"
         )
+
     async def save_data_to_json(self, save_item: Dict, store_type: str):
         """
         Below is a simple way to save it in json format.
@@ -196,7 +200,7 @@ class DouyinJsonStoreImplement(AbstractStore):
         """
         pathlib.Path(self.json_store_path).mkdir(parents=True, exist_ok=True)
         pathlib.Path(self.words_store_path).mkdir(parents=True, exist_ok=True)
-        save_file_name,words_file_name_prefix = self.make_save_file_name(store_type=store_type)
+        save_file_name, words_file_name_prefix = self.make_save_file_name(store_type=store_type)
         save_data = []
 
         async with self.lock:
@@ -235,7 +239,6 @@ class DouyinJsonStoreImplement(AbstractStore):
 
         """
         await self.save_data_to_json(comment_item, "comments")
-
 
     async def store_creator(self, creator: Dict):
         """
