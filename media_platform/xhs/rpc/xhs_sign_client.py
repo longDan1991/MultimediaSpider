@@ -47,12 +47,13 @@ class XhsSignClient:
             utils.logger.error(f"[XhsSignClient.request] request error: {e}")
             return None
 
-    async def sign(self, uri: str, data: Optional[Dict] = None) -> Optional[XhsSignResponse]:
+    async def sign(self, uri: str, data: Optional[Dict] = None, cookies: str = None) -> Optional[XhsSignResponse]:
         """
         向签名服务器签名发起请求
         Args:
             uri: 请求签名的Uri
             data: post请求的body数据
+            cookies: cookies
 
         Returns:
 
@@ -60,14 +61,31 @@ class XhsSignClient:
         sign_server_uri = "/signsrv/v1/xhs/sign"
         xhs_sign_req = XhsSignRequest(
             uri=uri,
-            data=data
+            data=data,
+            cookies=cookies
         )
-        res_json = await self.request(method="POST", url=sign_server_uri, json=xhs_sign_req.model_dump_json())
+        post_data = {
+            "uri": uri,
+            "data": data,
+            "cookies": cookies
+        }
+        res_json = await self.request(method="POST", url=sign_server_uri, json=post_data)
         if not res_json:
-            raise SignError(f"从签名服务器:{XHS_SIGN_SERVER_URL}/{sign_server_uri} 获取签名失败")
+            raise SignError(f"从签名服务器:{XHS_SIGN_SERVER_URL}{sign_server_uri} 获取签名失败")
 
         xhs_sign_response = XhsSignResponse(**res_json)
         if xhs_sign_response.isok:
             return xhs_sign_response
-        raise SignError(f"从签名服务器:{XHS_SIGN_SERVER_URL}/{sign_server_uri} 获取签名失败，原因：{xhs_sign_response.msg}")
+        raise SignError(f"从签名服务器:{XHS_SIGN_SERVER_URL}{sign_server_uri} 获取签名失败，原因：{xhs_sign_response.msg}, sign reponse: {xhs_sign_response}")
+
+
+    async def pong_sign_server(self):
+        """
+        test
+        :return:
+        """
+        utils.logger.info("[XhsSignClient.pong_sign_server] test xhs sign server is alive")
+        await self.request(method="GET", url="/signsrv/pong")
+        utils.logger.info("[XhsSignClient.pong_sign_server] xhs sign server is alive")
+
 

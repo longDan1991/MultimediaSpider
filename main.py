@@ -3,6 +3,7 @@ import sys
 
 import cmd_arg
 import config
+import constant
 import db
 from base.base_crawler import AbstractCrawler
 from media_platform.bilibili import BilibiliCrawler
@@ -15,12 +16,12 @@ from media_platform.xhs import XiaoHongShuCrawler
 
 class CrawlerFactory:
     CRAWLERS = {
-        "xhs": XiaoHongShuCrawler,
-        "dy": DouYinCrawler,
-        "ks": KuaishouCrawler,
-        "bili": BilibiliCrawler,
-        "wb": WeiboCrawler,
-        "tieba": TieBaCrawler
+        constant.XHS_PLATFORM_NAME: XiaoHongShuCrawler,
+        constant.DOUYIN_PLATFORM_NAME: DouYinCrawler,
+        constant.KUAISHOU_PLATFORM_NAME: KuaishouCrawler,
+        constant.BILIBILI_PLATFORM_NAME: BilibiliCrawler,
+        constant.WEIBO_PLATFORM_NAME: WeiboCrawler,
+        constant.TIEBA_PLATFORM_NAME: TieBaCrawler
     }
 
     @staticmethod

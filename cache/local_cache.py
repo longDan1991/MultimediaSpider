@@ -22,6 +22,7 @@ class ExpiringLocalCache(AbstractCache):
         self._cron_interval = cron_interval
         self._cache_container: Dict[str, Tuple[Any, float]] = {}
         self._cron_task: Optional[asyncio.Task] = None
+        self._loop = asyncio.get_event_loop()
         # 开启定时清理任务
         self._schedule_clear()
 
@@ -30,8 +31,21 @@ class ExpiringLocalCache(AbstractCache):
         析构函数，清理定时任务
         :return:
         """
+        self.stop()
+        # if self._cron_task is not None:
+        #     self._cron_task.cancel()
+
+    def stop(self):
+        """
+        停止定时清理任务
+        """
         if self._cron_task is not None:
             self._cron_task.cancel()
+            try:
+                self._loop.run_until_complete(self._cron_task)
+            except asyncio.CancelledError:
+                pass
+            self._cron_task = None
 
     def get(self, key: str) -> Optional[Any]:
         """

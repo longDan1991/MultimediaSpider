@@ -14,7 +14,7 @@ class XhsSignResult(BaseModel):
 class XhsSignRequest(BaseModel):
     uri: str = Field(..., title="uri", description="请求的uri")
     data: Optional[Any] = Field(None, title="data", description="请求body的数据")
-
+    cookies: str = Field("", title="cookies", description="cookies")
 
 class XhsSignResponse(BaseModel):
     biz_code: int = 0

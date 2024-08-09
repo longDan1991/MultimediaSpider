@@ -8,10 +8,11 @@ import httpx
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
+from account_pool import AccountWithIpModel
+from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractApiClient
-from constant.xiaohongshu import (XHS_API_URL, XHS_INDEX_URL,
-                                  XHS_SIGN_SERVER_URL)
-from model.m_xiaohongshu import XhsSignResponse
+from config import ENABLE_IP_PROXY
+from constant.xiaohongshu import XHS_API_URL, XHS_INDEX_URL
 from tools import utils
 
 from .exception import (DataFetchError, ErrorEnum, IPBlockError,
@@ -24,16 +25,54 @@ from .rpc.xhs_sign_client import XhsSignClient
 class XiaoHongShuClient(AbstractApiClient):
     def __init__(
             self,
-            timeout=10,
-            proxies=None,
-            cookies=None,
-            user_agent=None,
+            timeout: int = 10,
+            cookies: str = None,
+            proxies: Dict = None,
+            user_agent: str = None,
+            account_with_ip_pool: AccountWithIpPoolManager = None
     ):
-        self.proxies = proxies
+        """
+        xhs client constructor
+        Args:
+            timeout: 请求超时时间配置
+            cookies: 单个账号的cookies（不建议使用）
+            proxies: 单个账号的代理（不建议使用）
+            user_agent: 自定义的User-Agent
+            account_with_ip_pool:
+        """
         self.timeout = timeout
-        self._user_agent = user_agent or utils.get_user_agent()
         self._cookies = cookies
+        self._proxies = proxies
+        self._user_agent = user_agent or utils.get_user_agent()
         self._sign_client = XhsSignClient()
+        self._account_with_ip_pool = account_with_ip_pool
+        self._current_account_with_ip: Optional[AccountWithIpModel] = None
+
+    async def update_account_info(self):
+        """
+        更新客户端的账号信息，如果开启了IP代理，那么也会更新IP代理
+        Returns:
+
+        """
+        if self._account_with_ip_pool:
+            account_with_ip = await self._account_with_ip_pool.get_account_with_ip()
+            self._cookies = account_with_ip.account.cookies
+            if ENABLE_IP_PROXY:
+                self._proxies = account_with_ip.ip.get_httpx_proxy()
+            self._current_account_with_ip = account_with_ip
+
+    async def mark_account_invalid(self, account_with_ip: AccountWithIpModel):
+        """
+        标记账号为无效
+        Args:
+            account_with_ip:
+
+        Returns:
+
+        """
+        if self._account_with_ip_pool:
+            await self._account_with_ip_pool.mark_account_invalid(account_with_ip.account)
+            await self._account_with_ip_pool.mark_ip_invalid(account_with_ip.ip)
 
     async def _pre_headers(self, url: str, data=None) -> Dict:
         """
@@ -45,7 +84,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        xhs_sign_resp = await self._sign_client.sign(url, data)
+        xhs_sign_resp = await self._sign_client.sign(url, data, self._cookies)
         headers = {
             "X-S": xhs_sign_resp.data.x_s,
             "X-T": xhs_sign_resp.data.x_t,
@@ -58,13 +97,16 @@ class XiaoHongShuClient(AbstractApiClient):
     @property
     def headers(self):
         return {
-            "User-Agent": self._user_agent,
+            # "User-Agent": self._user_agent,
             "Content-Type": "application/json;charset=UTF-8",
             "Accept": "application/json, text/plain, */*",
-            "Cookie": self._cookies
+            "Cookie": self._cookies,
+            "origin": "https://www.xiaohongshu.com",
+            "referer": "https://www.xiaohongshu.com/",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         }
 
-    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
+    # @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
     async def request(self, method, url, **kwargs) -> Union[str, Any]:
         """
         封装httpx的公共请求方法，对请求响应做一些处理
@@ -76,7 +118,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
+        async with httpx.AsyncClient(proxies=self._proxies) as client:
             response = await client.request(
                 method, url, timeout=self.timeout,
                 **kwargs
@@ -116,14 +158,17 @@ class XiaoHongShuClient(AbstractApiClient):
         if isinstance(params, dict):
             final_uri = (f"{uri}?"
                          f"{urlencode(params)}")
-        headers = await self._pre_headers(final_uri)
         try:
+            headers = await self._pre_headers(final_uri)
             res = await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
             return res
-        except RetryError as e:
-            # 如果重试了5次次都还是异常了，那么尝试更换账号信息（登录成功cookies + ip）
-            pass
-
+        except RetryError:
+            utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
+            # 如果重试了5次次都还是异常了，那么尝试更换账号信息
+            await self.mark_account_invalid(self._current_account_with_ip)
+            await self.update_account_info()
+            headers = await self._pre_headers(final_uri)
+            return await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
 
     async def post(self, uri: str, data: dict) -> Dict:
         """
@@ -135,24 +180,29 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        headers = await self._pre_headers(uri, data)
         json_str = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
         try:
+            headers = await self._pre_headers(uri, data)
             res = await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
-                               data=json_str, headers=headers)
+                                     data=json_str, headers=headers)
             return res
-        except RetryError as e:
-            # 如果重试了5次次都还是异常了，那么尝试更换账号信息（登录成功cookies + ip）,重新尝试
-            pass
+        except RetryError:
+            utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
+            # 如果重试了5次次都还是异常了，那么尝试更换账号信息
+            await self.mark_account_invalid(self._current_account_with_ip)
+            await self.update_account_info()
+            headers = await self._pre_headers(uri, data)
+            return await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
+                                      data=json_str, headers=headers)
 
     async def pong(self) -> bool:
         """
-        用于检查登录态是否失效了
+        用于检查登录态和签名服务是否失效了
         Returns:
 
         """
-        """get a note to check if login state is ok"""
-        utils.logger.info("[XiaoHongShuClient.pong] Begin to pong xhs...")
+        await self._sign_client.pong_sign_server()
+        utils.logger.info("[XiaoHongShuClient.pong] Begin to check login state...")
         ping_flag = False
         try:
             note_card: Dict = await self.get_note_by_keyword(keyword="小红书")
@@ -162,12 +212,6 @@ class XiaoHongShuClient(AbstractApiClient):
             utils.logger.error(f"[XiaoHongShuClient.pong] Ping xhs failed: {e}, and try to login again...")
             ping_flag = False
         return ping_flag
-
-    async def update_cookies(self, cookies: str):
-        """
-        更新cookies
-        """
-        self._cookies = cookies
 
     async def get_note_by_keyword(
             self, keyword: str,
@@ -310,7 +354,7 @@ class XiaoHongShuClient(AbstractApiClient):
             callback: 一次评论爬取结束后
 
         Returns:
-        
+
         """
         if not config.ENABLE_GET_SUB_COMMENTS:
             utils.logger.info(

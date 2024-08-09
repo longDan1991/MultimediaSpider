@@ -14,7 +14,6 @@ class AbstractCrawler(ABC):
         pass
 
 
-
 class AbstractLogin(ABC):
     @abstractmethod
     async def begin(self):
@@ -60,8 +59,4 @@ class AbstractStoreImage(ABC):
 class AbstractApiClient(ABC):
     @abstractmethod
     async def request(self, method, url, **kwargs):
-        pass
-
-    @abstractmethod
-    async def update_cookies(self, browser_context: BrowserContext):
         pass

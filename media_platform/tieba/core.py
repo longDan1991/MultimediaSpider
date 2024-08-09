@@ -10,10 +10,8 @@ from playwright.async_api import (BrowserContext, BrowserType, Page,
 import config
 from base.base_crawler import AbstractCrawler
 from model.m_baidu_tieba import TiebaNote
-from proxy.proxy_ip_pool import IpInfoModel, create_ip_pool
 from store import tieba as tieba_store
 from tools import utils
-from tools.crawler_util import format_proxy_info
 from var import crawler_type_var
 
 from .client import BaiduTieBaClient
@@ -38,11 +36,12 @@ class TieBaCrawler(AbstractCrawler):
         """
         ip_proxy_pool, httpx_proxy_format = None, None
         if config.ENABLE_IP_PROXY:
-            utils.logger.info("[BaiduTieBaCrawler.start] Begin create ip proxy pool ...")
-            ip_proxy_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
-            ip_proxy_info: IpInfoModel = await ip_proxy_pool.get_proxy()
-            _, httpx_proxy_format = format_proxy_info(ip_proxy_info)
-            utils.logger.info(f"[BaiduTieBaCrawler.start] Init default ip proxy, value: {httpx_proxy_format}")
+            pass
+            # utils.logger.info("[BaiduTieBaCrawler.start] Begin create ip proxy pool ...")
+            # ip_proxy_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
+            # ip_proxy_info: IpInfoModel = await ip_proxy_pool.get_proxy()
+            # _, httpx_proxy_format = format_proxy_info(ip_proxy_info)
+            # utils.logger.info(f"[BaiduTieBaCrawler.start] Init default ip proxy, value: {httpx_proxy_format}")
 
         # Create a client to interact with the baidutieba website.
         self.tieba_client = BaiduTieBaClient(

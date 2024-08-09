@@ -4,7 +4,10 @@ from asyncio import Task
 from typing import Dict, List, Optional
 
 import config
+import constant
+from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractCrawler
+from proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
 from store import xhs as xhs_store
 from tools import utils
 from var import crawler_type_var
@@ -17,11 +20,28 @@ from .field import SearchSortType
 class XiaoHongShuCrawler(AbstractCrawler):
 
     def __init__(self) -> None:
+        self.xhs_client: Optional[XiaoHongShuClient] = None
+
+    async def create_xhs_client(self) -> None:
+        """
+        Create xhs client
+        Returns:
+
+        """
+        proxy_ip_pool: Optional[ProxyIpPool] = None
+        if config.ENABLE_IP_PROXY:
+            proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
         self.xhs_client = XiaoHongShuClient(
-            cookies=config.COOKIES
+            account_with_ip_pool=AccountWithIpPoolManager(
+                platform_name=constant.XHS_PLATFORM_NAME,
+                account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+                proxy_ip_pool=proxy_ip_pool
+            )
         )
+        await self.xhs_client.update_account_info()
 
     async def start(self) -> None:
+        await self.create_xhs_client()
         if not await self.xhs_client.pong():
             utils.logger.error("[XiaoHongShuCrawler.start] 登录态已经失效，请重新替换Cookies尝试")
             return
@@ -56,7 +76,6 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     utils.logger.info(f"[XiaoHongShuCrawler.search] Skip page {page}")
                     page += 1
                     continue
-
                 try:
                     utils.logger.info(f"[XiaoHongShuCrawler.search] search xhs keyword: {keyword}, page: {page}")
                     note_id_list: List[str] = []
@@ -91,6 +110,15 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 except DataFetchError:
                     utils.logger.error("[XiaoHongShuCrawler.search] Get note detail error")
                     break
+
+                except Exception as ex:
+                    utils.logger.error(f"[XiaoHongShuCrawler.search] Get note detail error: {ex}")
+                    # 打印当前爬取的关键词和页码，用于后续继续爬取
+                    utils.logger.info("------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
+                    for i in range (50):
+                        utils.logger.error(f"[XiaoHongShuCrawler.search] Current keyword: {keyword}, page: {page}")
+                    utils.logger.info("------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")
+                    return
 
     async def get_creators_and_notes(self) -> None:
         """Get creator's notes and retrieve their comment information."""

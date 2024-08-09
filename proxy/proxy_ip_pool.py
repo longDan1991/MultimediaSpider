@@ -9,7 +9,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 import config
-from proxy.providers import new_jisu_http_proxy, new_kuai_daili_proxy
+from proxy.providers import new_kuai_daili_proxy
 from tools import utils
 
 from .base_proxy import ProxyProvider
@@ -25,7 +25,7 @@ class ProxyIpPool:
             enable_validate_ip:
             ip_provider:
         """
-        self.valid_ip_url = "https://httpbin.org/ip"  # 验证 IP 是否有效的地址
+        self.valid_ip_url = "https://echo.apifox.com/ip"  # 验证 IP 是否有效的地址
         self.ip_pool_count = ip_pool_count
         self.enable_validate_ip = enable_validate_ip
         self.proxy_list: List[IpInfoModel] = []
@@ -52,13 +52,25 @@ class ProxyIpPool:
             }
             async with httpx.AsyncClient(proxies=httpx_proxy) as client:
                 response = await client.get(self.valid_ip_url)
-            if response.status_code == 200:
+            if response.status_code == 200 and response.json().get("origin") == proxy.ip:
                 return True
             else:
                 return False
         except Exception as e:
             utils.logger.info(f"[ProxyIpPool._is_valid_proxy] testing {proxy.ip} err: {e}")
             raise e
+
+    async def mark_ip_invalid(self, proxy: IpInfoModel):
+        """
+        标记IP为无效
+        :param proxy:
+        :return:
+        """
+        utils.logger.info(f"[ProxyIpPool.mark_ip_invalid] mark {proxy.ip} invalid")
+        for p in self.proxy_list:
+            if p.ip == proxy.ip and p.port == proxy.port and p.protocol == proxy.protocol and p.user == proxy.user and p.password == proxy.password:
+                self.proxy_list.remove(p)
+                break
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     async def get_proxy(self) -> IpInfoModel:
@@ -70,7 +82,7 @@ class ProxyIpPool:
             await self._reload_proxies()
 
         proxy = random.choice(self.proxy_list)
-        self.proxy_list.remove(proxy) # 取出来一个IP就应该移出掉
+        self.proxy_list.remove(proxy)  # 取出来一个IP就应该移出掉
         if self.enable_validate_ip:
             if not await self._is_valid_proxy(proxy):
                 raise Exception("[ProxyIpPool.get_proxy] current ip invalid and again get it")
@@ -86,7 +98,7 @@ class ProxyIpPool:
 
 
 IpProxyProvider: Dict[str, ProxyProvider] = {
-    ProviderNameEnum.JISHU_HTTP_PROVIDER.value: new_jisu_http_proxy(),
+    # ProviderNameEnum.JISHU_HTTP_PROVIDER.value: new_jisu_http_proxy(),
     ProviderNameEnum.KUAI_DAILI_PROVIDER.value: new_kuai_daili_proxy()
 }
 

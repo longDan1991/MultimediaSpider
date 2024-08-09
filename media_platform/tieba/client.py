@@ -92,12 +92,11 @@ class BaiduTieBaClient(AbstractApiClient):
         except RetryError as e:
             if self.ip_pool:
                 proxie_model = await self.ip_pool.get_proxy()
-                _, proxies = utils.format_proxy_info(proxie_model)
                 res = await self.request(method="GET", url=f"{self._host}{final_uri}",
                                          return_ori_content=return_ori_content,
-                                         proxies=proxies,
+                                         proxies=proxie_model.get_httpx_proxy(),
                                          **kwargs)
-                self.default_ip_proxy = proxies
+                self.default_ip_proxy = proxie_model.get_httpx_proxy()
                 return res
 
             utils.logger.error(f"[BaiduTieBaClient.get] 达到了最大重试次数，IP已经被Block，请尝试更换新的IP代理: {e}")
