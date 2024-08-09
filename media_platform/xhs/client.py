@@ -5,17 +5,20 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
+from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
 from base.base_crawler import AbstractApiClient
-from constant.xiaohongshu import XHS_SIGN_SERVER_URL, XHS_API_URL, XHS_INDEX_URL
-from tools import utils
+from constant.xiaohongshu import (XHS_API_URL, XHS_INDEX_URL,
+                                  XHS_SIGN_SERVER_URL)
 from model.m_xiaohongshu import XhsSignResponse
+from tools import utils
 
-
-from .exception import DataFetchError, IPBlockError, NeedVerifyError, SignError, ErrorEnum
+from .exception import (DataFetchError, ErrorEnum, IPBlockError,
+                        NeedVerifyError, SignError)
 from .field import SearchNoteType, SearchSortType
 from .help import get_search_id
+from .rpc.xhs_sign_client import XhsSignClient
 
 
 class XiaoHongShuClient(AbstractApiClient):
@@ -30,6 +33,7 @@ class XiaoHongShuClient(AbstractApiClient):
         self.timeout = timeout
         self._user_agent = user_agent or utils.get_user_agent()
         self._cookies = cookies
+        self._sign_client = XhsSignClient()
 
     async def _pre_headers(self, url: str, data=None) -> Dict:
         """
@@ -41,19 +45,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        sign_server_uri = "/xhs/sign"
-        post_data = {
-            "uri": url,
-            "data": data,
-            "cookies": self._cookies
-        }
-        async with httpx.AsyncClient(base_url=XHS_SIGN_SERVER_URL) as client:
-            response = await client.request(
-                "POST", sign_server_uri, timeout=60, json=post_data
-            )
-        xhs_sign_resp = XhsSignResponse(**response.json())
-        if not xhs_sign_resp.isok:
-            raise SignError(f"从签名服务器获取签名失败，原因：{xhs_sign_resp.isok}")
+        xhs_sign_resp = await self._sign_client.sign(url, data)
         headers = {
             "X-S": xhs_sign_resp.data.x_s,
             "X-T": xhs_sign_resp.data.x_t,
@@ -72,7 +64,7 @@ class XiaoHongShuClient(AbstractApiClient):
             "Cookie": self._cookies
         }
 
-
+    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
     async def request(self, method, url, **kwargs) -> Union[str, Any]:
         """
         封装httpx的公共请求方法，对请求响应做一些处理
@@ -125,7 +117,13 @@ class XiaoHongShuClient(AbstractApiClient):
             final_uri = (f"{uri}?"
                          f"{urlencode(params)}")
         headers = await self._pre_headers(final_uri)
-        return await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
+        try:
+            res = await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
+            return res
+        except RetryError as e:
+            # 如果重试了5次次都还是异常了，那么尝试更换账号信息（登录成功cookies + ip）
+            pass
+
 
     async def post(self, uri: str, data: dict) -> Dict:
         """
@@ -139,17 +137,13 @@ class XiaoHongShuClient(AbstractApiClient):
         """
         headers = await self._pre_headers(uri, data)
         json_str = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
-        return await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
-                                  data=json_str, headers=headers)
-
-    async def get_note_media(self, url: str) -> Union[bytes, None]:
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
-            response = await client.request("GET", url, timeout=self.timeout)
-            if not response.reason_phrase == "OK":
-                utils.logger.error(f"[XiaoHongShuClient.get_note_media] request {url} err, res:{response.text}")
-                return None
-            else:
-                return response.content
+        try:
+            res = await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
+                               data=json_str, headers=headers)
+            return res
+        except RetryError as e:
+            # 如果重试了5次次都还是异常了，那么尝试更换账号信息（登录成功cookies + ip）,重新尝试
+            pass
 
     async def pong(self) -> bool:
         """
