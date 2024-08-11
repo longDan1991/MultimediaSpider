@@ -64,6 +64,24 @@ class ExpiringLocalCache(AbstractCache):
 
         return value
 
+    def ttl(self, key: str) -> int:
+        """
+        获取键的过期时间, 返回-2表示键已经不存在了
+        :param key:
+        :return:
+        """
+        value, expire_time = self._cache_container.get(key, (None, 0))
+        if value is None:
+            return -2
+
+        # 如果键已过期，则删除键并返回None
+        if expire_time < time.time():
+            del self._cache_container[key]
+            return -2
+
+        return int(expire_time - time.time())
+
+
     def set(self, key: str, value: Any, expire_time: int) -> None:
         """
         将键的值设置到缓存中

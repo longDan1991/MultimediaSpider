@@ -32,7 +32,7 @@ class ProxyProvider(ABC):
 
 class IpCache:
     def __init__(self):
-        self.cache_client: AbstractCache = CacheFactory.create_cache(cache_type=config.CACHE_TYPE_MEMORY)
+        self.cache_client: AbstractCache = CacheFactory.create_cache(cache_type=config.USE_CACHE_TYPE)
 
     def set_ip(self, ip_key: str, ip_value_info: str, ex: int):
         """
@@ -57,7 +57,12 @@ class IpCache:
                 ip_value = self.cache_client.get(ip_key)
                 if not ip_value:
                     continue
-                all_ip_list.append(IpInfoModel(**json.loads(ip_value)))
+                ip_info_model = IpInfoModel(**json.loads(ip_value))
+                ttl = self.cache_client.ttl(ip_key)
+                if ttl > 0:
+                    ip_info_model.expired_time_ts = ttl
+                    all_ip_list.append(ip_info_model)
+
         except Exception as e:
             utils.logger.error("[IpCache.load_all_ip] get ip err from redis db", e)
         return all_ip_list

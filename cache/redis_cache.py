@@ -59,6 +59,11 @@ class RedisCache(AbstractCache):
         """
         return [key.decode() for key in self._redis_client.keys(pattern)]
 
+    def ttl(self, key: str) -> int:
+        """
+        获取键的剩余生存时间
+        """
+        return self._redis_client.ttl(key)
 
 if __name__ == '__main__':
     redis_cache = RedisCache()

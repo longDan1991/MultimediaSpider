@@ -18,3 +18,4 @@ REDIS_DB_NUM = os.getenv("REDIS_DB_NUM", 0)  # your redis db num
 # cache type
 CACHE_TYPE_REDIS = "redis"
 CACHE_TYPE_MEMORY = "memory"
+USE_CACHE_TYPE = CACHE_TYPE_REDIS

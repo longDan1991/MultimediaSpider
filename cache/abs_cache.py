@@ -40,3 +40,12 @@ class AbstractCache(ABC):
         :return:
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def ttl(self, key: str) -> int:
+        """
+        获取键的剩余生存时间
+        :param key: 键
+        :return:
+        """
+        raise NotImplementedError

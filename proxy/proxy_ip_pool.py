@@ -52,7 +52,7 @@ class ProxyIpPool:
             }
             async with httpx.AsyncClient(proxies=httpx_proxy) as client:
                 response = await client.get(self.valid_ip_url)
-            if response.status_code == 200 and response.json().get("origin") == proxy.ip:
+            if response.status_code == 200:
                 return True
             else:
                 return False
