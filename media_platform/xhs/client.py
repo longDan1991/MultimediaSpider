@@ -12,7 +12,6 @@ import config
 from account_pool import AccountWithIpModel
 from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractApiClient
-from config import ENABLE_IP_PROXY
 from constant.xiaohongshu import XHS_API_URL, XHS_INDEX_URL
 from tools import utils
 
@@ -81,7 +80,7 @@ class XiaoHongShuClient(AbstractApiClient):
         """
         if self._account_with_ip_pool:
             await self._account_with_ip_pool.mark_account_invalid(account_with_ip.account)
-            await self._account_with_ip_pool.mark_ip_invalid(account_with_ip.ip)
+            await self._account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
 
     async def _pre_headers(self, url: str, data=None) -> Dict:
         """

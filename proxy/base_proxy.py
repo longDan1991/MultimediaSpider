@@ -60,7 +60,7 @@ class IpCache:
                 ip_info_model = IpInfoModel(**json.loads(ip_value))
                 ttl = self.cache_client.ttl(ip_key)
                 if ttl > 0:
-                    ip_info_model.expired_time_ts = ttl
+                    ip_info_model.expired_time_ts = utils.get_unix_timestamp() + ttl
                     all_ip_list.append(ip_info_model)
 
         except Exception as e:
