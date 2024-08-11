@@ -34,7 +34,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Args:
             timeout: 请求超时时间配置
             user_agent: 自定义的User-Agent
-            account_with_ip_pool:
+            account_with_ip_pool: 账号池管理器
         """
         self.timeout = timeout
         self._user_agent = user_agent or utils.get_user_agent()
@@ -182,7 +182,7 @@ class XiaoHongShuClient(AbstractApiClient):
             res = await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs)
             return res
         except RetryError:
-            utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
+            utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次: {uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
             # 如果重试了5次次都还是异常了，那么尝试更换账号信息
             await self.mark_account_invalid(self.account_info)
             await self.update_account_info()

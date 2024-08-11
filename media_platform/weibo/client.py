@@ -7,13 +7,17 @@ import asyncio
 import copy
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
-from playwright.async_api import BrowserContext, Page
+from httpx import Response
+from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
+from account_pool import AccountWithIpModel
+from account_pool.pool import AccountWithIpPoolManager
+from constant.weibo import WEIBO_API_URL
 from tools import utils
 
 from .exception import DataFetchError
@@ -23,48 +27,177 @@ from .field import SearchType
 class WeiboClient:
     def __init__(
             self,
-            timeout=10,
-            proxies=None,
-            *,
-            headers: Dict[str, str],
-            playwright_page: Page,
-            cookie_dict: Dict[str, str],
+            timeout: int = 10,
+            user_agent: str = None,
+            account_with_ip_pool: AccountWithIpPoolManager = None
     ):
-        self.proxies = proxies
+        """
+        weibo client constructor
+        Args:
+            timeout: 请求超时时间
+            user_agent: 请求头中的 User-Agent
+            account_with_ip_pool: 账号池管理器
+        """
         self.timeout = timeout
-        self.headers = headers
-        self._host = "https://m.weibo.cn"
-        self.playwright_page = playwright_page
-        self.cookie_dict = cookie_dict
-        self._image_agent_host = "https://i1.wp.com/"
+        self._user_agent = user_agent or utils.get_user_agent()
+        self._account_with_ip_pool = account_with_ip_pool
+        self.account_info: Optional[AccountWithIpModel] = None
 
-    async def request(self, method, url, **kwargs) -> Any:
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
+    @property
+    def headers(self):
+        return {
+            "Content-Type": "application/json;charset=UTF-8",
+            "Accept": "application/json, text/plain, */*",
+            "Cookie": self._cookies,
+            "origin": "https://m.weibo.cn/",
+            "referer": "https://m.weibo.cn/",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        }
+
+    @property
+    def _proxies(self):
+        return self.account_info.ip_info.format_httpx_proxy() if self.account_info.ip_info else None
+
+    @property
+    def _cookies(self):
+        return self.account_info.account.cookies
+
+    async def update_account_info(self):
+        """
+        更新客户端的账号信息
+        Returns:
+
+        """
+        self.account_info = await self._account_with_ip_pool.get_account_with_ip_info()
+
+    async def mark_account_invalid(self, account_with_ip: AccountWithIpModel):
+        """
+        标记账号为无效
+        Args:
+            account_with_ip:
+
+        Returns:
+
+        """
+        if self._account_with_ip_pool:
+            await self._account_with_ip_pool.mark_account_invalid(account_with_ip.account)
+            await self._account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
+
+    async def check_ip_expired(self):
+        """
+        检查IP是否过期, 由于IP的过期时间在运行中是不确定的，所以每次请求都需要验证下IP是否过期
+        如果过期了，那么需要重新获取一个新的IP，赋值给当前账号信息
+        Returns:
+
+        """
+        if config.ENABLE_IP_PROXY and self.account_info.ip_info and self.account_info.ip_info.is_expired:
+            utils.logger.info(
+                f"[XiaoHongShuClient.request] current ip {self.account_info.ip_info.ip} is expired, "
+                f"mark it invalid and try to get a new one")
+            await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+            self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+
+    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
+    async def request(self, method, url, **kwargs) -> Union[Response, Dict]:
+        """
+        封装httpx的公共请求方法，对请求响应做一些处理
+        Args:
+            method: 请求方法
+            url: 请求的URL
+            **kwargs: 其他请求参数，例如请求头、请求体等
+
+        Returns:
+
+        """
+        await self.check_ip_expired()
+        need_return_ori_response = kwargs.get("return_response", False)
+        if "return_response" in kwargs:
+            del kwargs["return_response"]
+        headers = kwargs.pop("headers", None) or self.headers
+        async with httpx.AsyncClient(proxies=self._proxies) as client:
             response = await client.request(
-                method, url, timeout=self.timeout,
+                method, url, timeout=self.timeout, headers=headers,
                 **kwargs
             )
+
+        if need_return_ori_response:
+            return response
+
         data: Dict = response.json()
-        if data.get("ok") != 1:
+        if data.get("ok") not in [1, 0]:
+            # 0和1是正常的返回码，其他的都是异常，0代表无数据，1代表有数据
             utils.logger.error(f"[WeiboClient.request] request {method}:{url} err, res:{data}")
             raise DataFetchError(data.get("msg", "unkonw error"))
         else:
             return data.get("data", {})
 
-    async def get(self, uri: str, params=None, headers=None) -> Dict:
+    async def get(self, uri: str, params=None, **kwargs) -> Union[Response, Dict]:
+        """
+        GET请求，对请求头签名
+        Args:
+            uri: 请求路由
+            params: 请求参数
+
+        Returns:
+
+        """
         final_uri = uri
         if isinstance(params, dict):
             final_uri = (f"{uri}?"
                          f"{urlencode(params)}")
 
-        if headers is None:
-            headers = self.headers
-        return await self.request(method="GET", url=f"{self._host}{final_uri}", headers=headers)
+        try:
+            res = await self.request(method="GET", url=f"{WEIBO_API_URL}{final_uri}", **kwargs)
+            return res
+        except RetryError:
+            utils.logger.error(f"[WeiboClient.get] 请求uri:{uri} 重试均失败了，尝试更换账号与IP再次发起重试")
+            try:
+                utils.logger.info(f"[WeiboClient.get] 请求uri:{uri} 尝试更换IP再次发起重试...")
+                await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+                self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+                return await self.request(method="GET", url=f"{WEIBO_API_URL}{final_uri}", **kwargs)
 
-    async def post(self, uri: str, data: dict) -> Dict:
+            except RetryError:
+                utils.logger.error(
+                    f"[WeiboClient.get]请求uri:{uri}，IP更换后还是失败，尝试更换账号与IP再次发起重试")
+                await self.mark_account_invalid(self.account_info)
+                await self.update_account_info()
+                return await self.request(method="GET", url=f"{WEIBO_API_URL}{final_uri}", **kwargs)
+
+    async def post(self, uri: str, data: Dict, **kwargs) -> Union[Response, Dict]:
+        """
+        POST请求，对请求头签名
+        Args:
+            uri: 请求路由
+            data: 请求体参数
+
+        Returns:
+
+        """
         json_str = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
-        return await self.request(method="POST", url=f"{self._host}{uri}",
-                                  data=json_str, headers=self.headers)
+        try:
+            res = await self.request(method="POST", url=f"{WEIBO_API_URL}{uri}",
+                                     data=json_str, **kwargs)
+            return res
+        except RetryError:
+            utils.logger.error(f"[WeiboClient.post] 请求uri:{uri} 重试均失败了，尝试更换账号与IP再次发起重试")
+            try:
+                utils.logger.info(f"[WeiboClient.post] 请求uri:{uri} 尝试更换IP再次发起重试...")
+                await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+                self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+                res = await self.request(method="POST", url=f"{WEIBO_API_URL}{uri}",
+                                         data=json_str, **kwargs)
+
+                return res
+            except RetryError:
+                utils.logger.error(
+                    f"[WeiboClient.post]请求uri:{uri}，IP更换后还是失败，尝试更换账号与IP再次发起重试")
+                await self.mark_account_invalid(self.account_info)
+                await self.update_account_info()
+                res = await self.request(method="POST", url=f"{WEIBO_API_URL}{uri}",
+                                         data=json_str, **kwargs)
+
+                return res
 
     async def pong(self) -> bool:
         """get a note to check if login state is ok"""
@@ -72,7 +205,7 @@ class WeiboClient:
         ping_flag = False
         try:
             uri = "/api/config"
-            resp_data: Dict = await self.request(method="GET", url=f"{self._host}{uri}", headers=self.headers)
+            resp_data: Dict = await self.request(method="GET", url=f"{WEIBO_API_URL}{uri}")
             if resp_data.get("login"):
                 ping_flag = True
             else:
@@ -81,11 +214,6 @@ class WeiboClient:
             utils.logger.error(f"[WeiboClient.pong] Pong weibo failed: {e}, and try to login again...")
             ping_flag = False
         return ping_flag
-
-    async def update_cookies(self, browser_context: BrowserContext):
-        cookie_str, cookie_dict = utils.convert_cookies(await browser_context.cookies())
-        self.headers["Cookie"] = cookie_str
-        self.cookie_dict = cookie_dict
 
     async def get_note_by_keyword(
             self,
@@ -145,6 +273,8 @@ class WeiboClient:
         max_id = -1
         while not is_end:
             comments_res = await self.get_note_comments(note_id, max_id)
+            if not comments_res:
+                break
             max_id: int = comments_res.get("max_id")
             comment_list: List[Dict] = comments_res.get("data", [])
             is_end = max_id == 0
@@ -188,44 +318,19 @@ class WeiboClient:
         :param note_id:
         :return:
         """
-        url = f"{self._host}/detail/{note_id}"
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
-            response = await client.request(
-                "GET", url, timeout=self.timeout, headers=self.headers
-            )
-            if response.status_code != 200:
-                raise DataFetchError(f"get weibo detail err: {response.text}")
-            match = re.search(r'var \$render_data = (\[.*?\])\[0\]', response.text, re.DOTALL)
-            if match:
-                render_data_json = match.group(1)
-                render_data_dict = json.loads(render_data_json)
-                note_detail = render_data_dict[0].get("status")
-                note_item = {
-                    "mblog": note_detail
-                }
-                return note_item
-            else:
-                utils.logger.info(f"[WeiboClient.get_note_info_by_id] 未找到$render_data的值")
-                return dict()
-
-    async def get_note_image(self, image_url: str) -> bytes:
-        image_url = image_url[8:]  # 去掉 https://
-        sub_url = image_url.split("/")
-        image_url = ""
-        for i in range(len(sub_url)):
-            if i == 1:
-                image_url += "large/"  # 都获取高清大图
-            elif i == len(sub_url) - 1:
-                image_url += sub_url[i]
-            else:
-                image_url += sub_url[i] + "/"
-        # 微博图床对外存在防盗链，所以需要代理访问
-        # 由于微博图片是通过 i1.wp.com 来访问的，所以需要拼接一下
-        final_uri = (f"{self._image_agent_host}" f"{image_url}")
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
-            response = await client.request("GET", final_uri, timeout=self.timeout)
-            if not response.reason_phrase == "OK":
-                utils.logger.error(f"[WeiboClient.get_note_image] request {final_uri} err, res:{response.text}")
-                return None
-            else:
-                return response.content
+        uri = f"/detail/{note_id}"
+        response: Response = await self.get(uri, return_response=True)
+        if response.status_code != 200:
+            raise DataFetchError(f"get weibo detail err: {response.text}")
+        match = re.search(r'var \$render_data = (\[.*?\])\[0\]', response.text, re.DOTALL)
+        if match:
+            render_data_json = match.group(1)
+            render_data_dict = json.loads(render_data_json)
+            note_detail = render_data_dict[0].get("status")
+            note_item = {
+                "mblog": note_detail
+            }
+            return note_item
+        else:
+            utils.logger.info(f"[WeiboClient.get_note_info_by_id] 未找到$render_data的值")
+            return dict()

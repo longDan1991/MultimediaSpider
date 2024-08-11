@@ -2,20 +2,16 @@
 # @Author  : relakkes@gmail.com
 # @Time    : 2023/12/23 15:41
 # @Desc    : 微博爬虫主流程代码
-
-
 import asyncio
-import os
 import random
 from asyncio import Task
-from typing import Dict, List, Optional, Tuple
-
-from playwright.async_api import (BrowserContext, BrowserType, Page,
-                                  async_playwright)
+from typing import Dict, List, Optional
 
 import config
+import constant
+from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractCrawler
-from proxy.proxy_ip_pool import IpInfoModel, create_ip_pool
+from proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
 from store import weibo as weibo_store
 from tools import utils
 from var import crawler_type_var
@@ -24,69 +20,46 @@ from .client import WeiboClient
 from .exception import DataFetchError
 from .field import SearchType
 from .help import filter_search_result_card
-from .login import WeiboLogin
 
 
 class WeiboCrawler(AbstractCrawler):
-    context_page: Page
-    wb_client: WeiboClient
-    browser_context: BrowserContext
-
     def __init__(self):
-        self.index_url = "https://www.weibo.com"
-        self.mobile_index_url = "https://m.weibo.cn"
-        self.user_agent = utils.get_user_agent()
-        self.mobile_user_agent = utils.get_mobile_user_agent()
+        self.wb_client: Optional[WeiboClient] = None
+
+    async def create_weibo_client(self) -> None:
+        """
+        Create xhs client
+        Returns:
+
+        """
+        proxy_ip_pool: Optional[ProxyIpPool] = None
+        if config.ENABLE_IP_PROXY:
+            proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
+        self.wb_client = WeiboClient(
+            account_with_ip_pool=AccountWithIpPoolManager(
+                platform_name=constant.WEIBO_PLATFORM_NAME,
+                account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+                proxy_ip_pool=proxy_ip_pool
+            )
+        )
+        await self.wb_client.update_account_info()
 
     async def start(self):
-        playwright_proxy_format, httpx_proxy_format = None, None
-        if config.ENABLE_IP_PROXY:
-            ip_proxy_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
-            ip_proxy_info: IpInfoModel = await ip_proxy_pool.get_proxy()
-            playwright_proxy_format, httpx_proxy_format = self.format_proxy_info(ip_proxy_info)
-
-        async with async_playwright() as playwright:
-            # Launch a browser context.
-            chromium = playwright.chromium
-            self.browser_context = await self.launch_browser(
-                chromium,
-                None,
-                self.mobile_user_agent,
-                headless=config.HEADLESS
-            )
-            # stealth.min.js is a js script to prevent the website from detecting the crawler.
-            await self.browser_context.add_init_script(path="libs/stealth.min.js")
-            self.context_page = await self.browser_context.new_page()
-            await self.context_page.goto(self.mobile_index_url)
-
-            # Create a client to interact with the xiaohongshu website.
-            self.wb_client = await self.create_weibo_client(httpx_proxy_format)
-            if not await self.wb_client.pong():
-                login_obj = WeiboLogin(
-                    login_type=config.LOGIN_TYPE,
-                    login_phone="",  # your phone number
-                    browser_context=self.browser_context,
-                    context_page=self.context_page,
-                    cookie_str=config.COOKIES
-                )
-                await login_obj.begin()
-
-                # 登录成功后重定向到手机端的网站，再更新手机端登录成功的cookie
-                utils.logger.info("[WeiboCrawler.start] redirect weibo mobile homepage and update cookies on mobile platform")
-                await self.context_page.goto(self.mobile_index_url)
-                await asyncio.sleep(2)
-                await self.wb_client.update_cookies(browser_context=self.browser_context)
-
-            crawler_type_var.set(config.CRAWLER_TYPE)
-            if config.CRAWLER_TYPE == "search":
-                # Search for video and retrieve their comment information.
-                await self.search()
-            elif config.CRAWLER_TYPE == "detail":
-                # Get the information and comments of the specified post
-                await self.get_specified_notes()
-            else:
-                pass
-            utils.logger.info("[WeiboCrawler.start] Weibo Crawler finished ...")
+        # Create a client to interact with the xiaohongshu website.
+        await self.create_weibo_client()
+        if not await self.wb_client.pong():
+            utils.logger.error("[WeiboCrawler.start] 登录态已经失效，请重新替换Cookies尝试")
+            return
+        crawler_type_var.set(config.CRAWLER_TYPE)
+        if config.CRAWLER_TYPE == "search":
+            # Search for video and retrieve their comment information.
+            await self.search()
+        elif config.CRAWLER_TYPE == "detail":
+            # Get the information and comments of the specified post
+            await self.get_specified_notes()
+        else:
+            pass
+        utils.logger.info("[WeiboCrawler.start] Weibo Crawler finished ...")
 
     async def search(self):
         """
@@ -106,24 +79,39 @@ class WeiboCrawler(AbstractCrawler):
                     utils.logger.info(f"[WeiboCrawler.search] Skip page: {page}")
                     page += 1
                     continue
-                utils.logger.info(f"[WeiboCrawler.search] search weibo keyword: {keyword}, page: {page}")
-                search_res = await self.wb_client.get_note_by_keyword(
-                    keyword=keyword,
-                    page=page,
-                    search_type=SearchType.DEFAULT
-                )
-                note_id_list: List[str] = []
-                note_list = filter_search_result_card(search_res.get("cards"))
-                for note_item in note_list:
-                    if note_item:
-                        mblog: Dict = note_item.get("mblog")
-                        if mblog:
-                            note_id_list.append(mblog.get("id"))
-                            await weibo_store.update_weibo_note(note_item)
-                            await self.get_note_images(mblog)
+                try:
+                    utils.logger.info(f"[WeiboCrawler.search] search weibo keyword: {keyword}, page: {page}")
+                    search_res = await self.wb_client.get_note_by_keyword(
+                        keyword=keyword,
+                        page=page,
+                        search_type=SearchType.DEFAULT
+                    )
+                    note_id_list: List[str] = []
+                    note_list = filter_search_result_card(search_res.get("cards"))
+                    for note_item in note_list:
+                        if note_item:
+                            mblog: Dict = note_item.get("mblog")
+                            if mblog:
+                                note_id_list.append(mblog.get("id"))
+                                await weibo_store.update_weibo_note(note_item)
 
-                page += 1
-                await self.batch_get_notes_comments(note_id_list)
+                    page += 1
+                    await self.batch_get_notes_comments(note_id_list)
+
+                except DataFetchError as ex:
+                    utils.logger.error(f"[WeiboCrawler.search] Search notes error: {ex}")
+                    break
+
+                except Exception as ex:
+                    utils.logger.error(f"[WeiboCrawler.search] Get note detail error: {ex}")
+                    # 发生异常了，则打印当前爬取的关键词和页码，用于后续继续爬取
+                    utils.logger.info(
+                        "------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
+                    for i in range(50):
+                        utils.logger.error(f"[WeiboCrawler.search] Current keyword: {keyword}, page: {page}")
+                    utils.logger.info(
+                        "------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")
+                    return
 
     async def get_specified_notes(self):
         """
@@ -190,92 +178,10 @@ class WeiboCrawler(AbstractCrawler):
                 utils.logger.info(f"[WeiboCrawler.get_note_comments] begin get note_id: {note_id} comments ...")
                 await self.wb_client.get_note_all_comments(
                     note_id=note_id,
-                    crawl_interval=random.randint(1,3), # 微博对API的限流比较严重，所以延时提高一些
+                    crawl_interval=random.randint(1, 3),  # 微博对API的限流比较严重，所以延时提高一些
                     callback=weibo_store.batch_update_weibo_note_comments
                 )
             except DataFetchError as ex:
                 utils.logger.error(f"[WeiboCrawler.get_note_comments] get note_id: {note_id} comment error: {ex}")
             except Exception as e:
                 utils.logger.error(f"[WeiboCrawler.get_note_comments] may be been blocked, err:{e}")
-
-    async def get_note_images(self, mblog: Dict):
-        """
-        get note images
-        :param mblog:
-        :return:
-        """
-        if not config.ENABLE_GET_IMAGES:
-            utils.logger.info(f"[WeiboCrawler.get_note_images] Crawling image mode is not enabled")
-            return
-        
-        pics: Dict = mblog.get("pics")
-        if not pics:
-            return
-        for pic in pics:
-            url = pic.get("url")
-            if not url:
-                continue
-            content = await self.wb_client.get_note_image(url)
-            if content != None:
-                extension_file_name = url.split(".")[-1]
-                await weibo_store.update_weibo_note_image(pic["pid"], content, extension_file_name)
-
-    async def create_weibo_client(self, httpx_proxy: Optional[str]) -> WeiboClient:
-        """Create xhs client"""
-        utils.logger.info("[WeiboCrawler.create_weibo_client] Begin create weibo API client ...")
-        cookie_str, cookie_dict = utils.convert_cookies(await self.browser_context.cookies())
-        weibo_client_obj = WeiboClient(
-            proxies=httpx_proxy,
-            headers={
-                "User-Agent": utils.get_mobile_user_agent(),
-                "Cookie": cookie_str,
-                "Origin": "https://m.weibo.cn",
-                "Referer": "https://m.weibo.cn",
-                "Content-Type": "application/json;charset=UTF-8"
-            },
-            playwright_page=self.context_page,
-            cookie_dict=cookie_dict,
-        )
-        return weibo_client_obj
-
-    @staticmethod
-    def format_proxy_info(ip_proxy_info: IpInfoModel) -> Tuple[Optional[Dict], Optional[Dict]]:
-        """format proxy info for playwright and httpx"""
-        playwright_proxy = {
-            "server": f"{ip_proxy_info.protocol}{ip_proxy_info.ip}:{ip_proxy_info.port}",
-            "username": ip_proxy_info.user,
-            "password": ip_proxy_info.password,
-        }
-        httpx_proxy = {
-            f"{ip_proxy_info.protocol}": f"http://{ip_proxy_info.user}:{ip_proxy_info.password}@{ip_proxy_info.ip}:{ip_proxy_info.port}"
-        }
-        return playwright_proxy, httpx_proxy
-
-    async def launch_browser(
-            self,
-            chromium: BrowserType,
-            playwright_proxy: Optional[Dict],
-            user_agent: Optional[str],
-            headless: bool = True
-    ) -> BrowserContext:
-        """Launch browser and create browser context"""
-        utils.logger.info("[WeiboCrawler.launch_browser] Begin create browser context ...")
-        if config.SAVE_LOGIN_STATE:
-            user_data_dir = os.path.join(os.getcwd(), "browser_data",
-                                         config.USER_DATA_DIR % config.PLATFORM)  # type: ignore
-            browser_context = await chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                accept_downloads=True,
-                headless=headless,
-                proxy=playwright_proxy,  # type: ignore
-                viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
-            )
-            return browser_context
-        else:
-            browser = await chromium.launch(headless=headless, proxy=playwright_proxy)  # type: ignore
-            browser_context = await browser.new_context(
-                viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
-            )
-            return browser_context
