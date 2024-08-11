@@ -96,7 +96,7 @@ class BaiduTieBaClient(AbstractApiClient):
                                          return_ori_content=return_ori_content,
                                          proxies=proxie_model.get_httpx_proxy(),
                                          **kwargs)
-                self.default_ip_proxy = proxie_model.get_httpx_proxy()
+                self.default_ip_proxy = proxie_model.format_httpx_proxy()
                 return res
 
             utils.logger.error(f"[BaiduTieBaClient.get] 达到了最大重试次数，IP已经被Block，请尝试更换新的IP代理: {e}")

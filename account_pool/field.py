@@ -58,11 +58,11 @@ class AccountWithIpModel(BaseModel):
     account with ip model
     """
     account: AccountInfoModel
-    ip: Optional[IpInfoModel] = None
+    ip_info: Optional[IpInfoModel] = None
 
     def __repr__(self):
         # Delegate repr customization to AccountInfoModel
-        return f"AccountWithIpModel(account={repr(self.account)}, ip={self.ip})"
+        return f"AccountWithIpModel(account={repr(self.account)}, ip_info={self.ip_info})"
 
 if __name__ == '__main__':
     AccountPlatfromEnum("xhs1")

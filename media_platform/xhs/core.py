@@ -189,7 +189,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
         need_get_comment_note_ids = []
         note_details = await asyncio.gather(*get_note_detail_task_list)
         for note_detail in note_details:
-            if note_detail is not None:
+            if note_detail:
                 need_get_comment_note_ids.append(note_detail.get("note_id"))
                 await xhs_store.update_xhs_note(note_detail)
         await self.batch_get_note_comments(need_get_comment_note_ids)

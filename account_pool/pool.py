@@ -127,19 +127,19 @@ class AccountWithIpPoolManager(AccountPoolManager):
         """
         self.proxy_ip_pool = proxy_ip_pool
 
-    async def get_account_with_ip(self) -> AccountWithIpModel:
+    async def get_account_with_ip_info(self) -> AccountWithIpModel:
         """
         get account with ip, if proxy_ip_pool is None, then return account only
         Returns:
 
         """
         account: AccountInfoModel = self.get_active_account()
-        ip: Optional[IpInfoModel] = None
-        if self.proxy_ip_pool is not None:
-            ip = await self.proxy_ip_pool.get_proxy()
+        ip_info: Optional[IpInfoModel] = None
+        if self.proxy_ip_pool:
+            ip_info = await self.proxy_ip_pool.get_proxy()
             utils.logger.info(
-                f"[AccountWithIpPoolManager.get_account_with_ip] enable proxy ip pool, get proxy ip: {ip}")
-        return AccountWithIpModel(account=account, ip=ip)
+                f"[AccountWithIpPoolManager.get_account_with_ip] enable proxy ip pool, get proxy ip: {ip_info}")
+        return AccountWithIpModel(account=account, ip_info=ip_info)
 
     async def mark_account_invalid(self, account: AccountInfoModel):
         """
@@ -152,23 +152,23 @@ class AccountWithIpPoolManager(AccountPoolManager):
         """
         self.update_account_status(account, AccountStatusEnum.INVALID)
 
-    async def mark_ip_invalid(self, ip: IpInfoModel):
+    async def mark_ip_invalid(self, ip_info: IpInfoModel):
         """
         mark ip invalid
         Args:
-            ip:
+            ip_info:
 
         Returns:
 
         """
-        if not ip:
+        if not ip_info:
             return
-        await self.proxy_ip_pool.mark_ip_invalid(ip)
+        await self.proxy_ip_pool.mark_ip_invalid(ip_info)
 
 
 async def test_get_account_with_ip():
     account_pool_manager = AccountWithIpPoolManager(constant.XHS_PLATFORM_NAME)
-    account_with_ip = await account_pool_manager.get_account_with_ip()
+    account_with_ip = await account_pool_manager.get_account_with_ip_info()
     print(account_with_ip)
     return account_with_ip
 

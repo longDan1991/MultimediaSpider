@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 from typing import Callable, Dict, List, Optional, Union
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import urlencode
 
 import httpx
 from httpx import Response
@@ -27,8 +27,6 @@ class XiaoHongShuClient(AbstractApiClient):
     def __init__(
             self,
             timeout: int = 10,
-            cookies: str = None,
-            proxies: Dict = None,
             user_agent: str = None,
             account_with_ip_pool: AccountWithIpPoolManager = None
     ):
@@ -36,31 +34,41 @@ class XiaoHongShuClient(AbstractApiClient):
         xhs client constructor
         Args:
             timeout: 请求超时时间配置
-            cookies: 单个账号的cookies（不建议使用）
-            proxies: 单个账号的代理（不建议使用）
             user_agent: 自定义的User-Agent
             account_with_ip_pool:
         """
         self.timeout = timeout
-        self._cookies = cookies
-        self._proxies = proxies
         self._user_agent = user_agent or utils.get_user_agent()
         self._sign_client = XhsSignClient()
         self._account_with_ip_pool = account_with_ip_pool
-        self._current_account_with_ip: Optional[AccountWithIpModel] = None
+        self.account_info: Optional[AccountWithIpModel] = None
+
+    @property
+    def headers(self):
+        return {
+            "Content-Type": "application/json;charset=UTF-8",
+            "Accept": "application/json, text/plain, */*",
+            "Cookie": self._cookies,
+            "origin": "https://www.xiaohongshu.com",
+            "referer": "https://www.xiaohongshu.com/",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        }
+
+    @property
+    def _proxies(self):
+        return self.account_info.ip_info.format_httpx_proxy() if self.account_info.ip_info else None
+
+    @property
+    def _cookies(self):
+        return self.account_info.account.cookies
 
     async def update_account_info(self):
         """
-        更新客户端的账号信息，如果开启了IP代理，那么也会更新IP代理
+        更新客户端的账号信息
         Returns:
 
         """
-        if self._account_with_ip_pool:
-            account_with_ip = await self._account_with_ip_pool.get_account_with_ip()
-            self._cookies = account_with_ip.account.cookies
-            if ENABLE_IP_PROXY:
-                self._proxies = account_with_ip.ip.get_httpx_proxy()
-            self._current_account_with_ip = account_with_ip
+        self.account_info = await self._account_with_ip_pool.get_account_with_ip_info()
 
     async def mark_account_invalid(self, account_with_ip: AccountWithIpModel):
         """
@@ -95,16 +103,19 @@ class XiaoHongShuClient(AbstractApiClient):
         headers.update(self.headers)
         return headers
 
-    @property
-    def headers(self):
-        return {
-            "Content-Type": "application/json;charset=UTF-8",
-            "Accept": "application/json, text/plain, */*",
-            "Cookie": self._cookies,
-            "origin": "https://www.xiaohongshu.com",
-            "referer": "https://www.xiaohongshu.com/",
-            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        }
+    async def check_ip_expired(self):
+        """
+        检查IP是否过期, 由于IP的过期时间在运行中是不确定的，所以每次请求都需要验证下IP是否过期
+        如果过期了，那么需要重新获取一个新的IP，赋值给当前账号信息
+        Returns:
+
+        """
+        if config.ENABLE_IP_PROXY and self.account_info.ip_info and self.account_info.ip_info.is_expired:
+            utils.logger.info(
+                f"[XiaoHongShuClient.request] current ip {self.account_info.ip_info.ip} is expired, "
+                f"mark it invalid and try to get a new one")
+            await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+            self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
     async def request(self, method, url, **kwargs) -> Union[Response, Dict]:
@@ -118,6 +129,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
+        await self.check_ip_expired()
         need_return_ori_response = kwargs.get("return_response", False)
         if "return_response" in kwargs:
             del kwargs["return_response"]
@@ -173,7 +185,7 @@ class XiaoHongShuClient(AbstractApiClient):
         except RetryError:
             utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
             # 如果重试了5次次都还是异常了，那么尝试更换账号信息
-            await self.mark_account_invalid(self._current_account_with_ip)
+            await self.mark_account_invalid(self.account_info)
             await self.update_account_info()
             headers = await self._pre_headers(final_uri)
             return await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs)
@@ -197,7 +209,7 @@ class XiaoHongShuClient(AbstractApiClient):
         except RetryError:
             utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
             # 如果重试了5次次都还是异常了，那么尝试更换账号信息
-            await self.mark_account_invalid(self._current_account_with_ip)
+            await self.mark_account_invalid(self.account_info)
             await self.update_account_info()
             headers = await self._pre_headers(uri, data)
             return await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
@@ -488,6 +500,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
+
         def camel_to_underscore(key):
             return re.sub(r"(?<!^)(?=[A-Z])", "_", key).lower()
 

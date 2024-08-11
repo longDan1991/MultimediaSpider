@@ -2,6 +2,7 @@
 # @Author  : relakkes@gmail.com
 # @Time    : 2024/4/5 10:18
 # @Desc    : 基础类型
+import time
 from enum import Enum
 from typing import Dict, Optional
 
@@ -22,7 +23,7 @@ class IpInfoModel(BaseModel):
     password: str = Field(title="IP代理认证用户的密码")
     expired_time_ts: Optional[int] = Field(title="IP 过期时间")
 
-    def get_httpx_proxy(self) -> Dict:
+    def format_httpx_proxy(self) -> Dict:
         """
         Get the httpx proxy dict
         Returns:
@@ -32,3 +33,12 @@ class IpInfoModel(BaseModel):
             f"{self.protocol}": f"http://{self.user}:{self.password}@{self.ip}:{self.port}"
         }
         return httpx_proxy
+
+    @property
+    def is_expired(self) -> bool:
+        """
+        Check if the IP is expired
+        Returns:
+            bool: True if the IP is expired, False otherwise
+        """
+        return self.expired_time_ts < int(time.time())
