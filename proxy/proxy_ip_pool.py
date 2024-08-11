@@ -67,6 +67,7 @@ class ProxyIpPool:
         :return:
         """
         utils.logger.info(f"[ProxyIpPool.mark_ip_invalid] mark {proxy.ip} invalid")
+        self.ip_provider.mark_ip_invalid(proxy)
         for p in self.proxy_list:
             if p.ip == proxy.ip and p.port == proxy.port and p.protocol == proxy.protocol and p.user == proxy.user and p.password == proxy.password:
                 self.proxy_list.remove(p)
@@ -103,16 +104,18 @@ IpProxyProvider: Dict[str, ProxyProvider] = {
 }
 
 
-async def create_ip_pool(ip_pool_count: int, enable_validate_ip: bool) -> ProxyIpPool:
+async def create_ip_pool(ip_pool_count: int, enable_validate_ip: bool,
+                         ip_provider=config.IP_PROXY_PROVIDER_NAME) -> ProxyIpPool:
     """
      创建 IP 代理池
     :param ip_pool_count: ip池子的数量
     :param enable_validate_ip: 是否开启验证IP代理
+    :param ip_provider: 代理IP提供商名称
     :return:
     """
     pool = ProxyIpPool(ip_pool_count=ip_pool_count,
                        enable_validate_ip=enable_validate_ip,
-                       ip_provider=IpProxyProvider.get(config.IP_PROXY_PROVIDER_NAME)
+                       ip_provider=IpProxyProvider.get(ip_provider)
                        )
     await pool.load_proxies()
     return pool

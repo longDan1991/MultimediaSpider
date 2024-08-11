@@ -33,6 +33,15 @@ class AbstractCache(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def delete(self, key: str) -> None:
+        """
+        删除键
+        :param key: 键
+        :return:
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def keys(self, pattern: str) -> List[str]:
         """
         获取所有符合pattern的key

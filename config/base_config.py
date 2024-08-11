@@ -2,7 +2,7 @@
 from constant import EXCEL_ACCOUNT_SAVE
 
 PLATFORM = "xhs"
-KEYWORDS = "编程副业,编程兼职"
+KEYWORDS = "python,golang,java"
 LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
 COOKIES = "xsecappid=xhs-pc-web;acw_tc=26a3caa877c75c19212f9cb76ec968cfe91abff9d70b718e0b2bb43572d94cdf;websectiga=a9bdcaed0af874f3a1431e94fbea410e8f738542fbb02df1e8e30c29ef3d91ac;webBuild=4.28.5;sec_poison_id=8644aaa7-f55f-47b8-8796-10d761496141;web_session=0400698e2cfed1566705c7a280344b56b799f4;gid=yjyqKjK20420yjyqKjK248DiW4f2vICiF7iC6UA62Vj0d7q83Tq8hf888q2Y4y48JWfj28YY;a1=19136965474d5ynxfrufxm5j9aeik30v50mudbfpq30000358414;abRequestId=3719aa32-3d1a-51fd-899e-60ed92474443;unread={%22ub%22:%2266b4aeb7000000000901730d%22%2C%22ue%22:%2266ac419e000000000503b10a%22%2C%22uc%22:27};webId=8377299b44973ba641284984fb5c117c"
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持小红书
@@ -12,10 +12,10 @@ PUBLISH_TIME_TYPE = 0
 CRAWLER_TYPE = "detail"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
 
 # 是否开启 IP 代理
-ENABLE_IP_PROXY = False
+ENABLE_IP_PROXY = True
 
 # 代理IP池数量
-IP_PROXY_POOL_COUNT = 10
+IP_PROXY_POOL_COUNT = 2
 
 # 代理IP提供商名称
 IP_PROXY_PROVIDER_NAME = "kuaidaili"
@@ -30,7 +30,7 @@ HEADLESS = False
 SAVE_LOGIN_STATE = True
 
 # 数据保存类型选项配置,支持三种类型：csv、db、json
-SAVE_DATA_OPTION = "csv"  # csv or db or json
+SAVE_DATA_OPTION = "db"  # csv or db or json
 
 # 账号池保存类型选项配置,支持2种类型：xlsx、mysql
 ACCOUNT_POOL_SAVE_TYPE = EXCEL_ACCOUNT_SAVE
@@ -42,20 +42,20 @@ USER_DATA_DIR = "%s_user_data_dir"  # %s will be replaced by platform name
 START_PAGE = 1
 
 # 爬取视频/帖子的数量控制
-CRAWLER_MAX_NOTES_COUNT = 100
+CRAWLER_MAX_NOTES_COUNT = 200
 
 # 并发爬虫数量控制
-MAX_CONCURRENCY_NUM = 1
+MAX_CONCURRENCY_NUM = 10
 
 # 是否开启爬图片模式, 默认不开启爬图片
 ENABLE_GET_IMAGES = False
 
 # 是否开启爬评论模式, 默认不开启爬评论
-ENABLE_GET_COMMENTS = False
+ENABLE_GET_COMMENTS = True
 
 # 是否开启爬二级评论模式, 默认不开启爬二级评论
 # 老版本项目使用了 db, 则需参考 schema/tables.sql line 287 增加表字段
-ENABLE_GET_SUB_COMMENTS = False
+ENABLE_GET_SUB_COMMENTS = True
 
 # 指定小红书需要爬虫的笔记ID列表
 XHS_SPECIFIED_ID_LIST = [

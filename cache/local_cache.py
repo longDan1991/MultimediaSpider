@@ -92,6 +92,15 @@ class ExpiringLocalCache(AbstractCache):
         """
         self._cache_container[key] = (value, time.time() + expire_time)
 
+    def delete(self, key: str) -> None:
+        """
+        删除键
+        :param key:
+        :return:
+        """
+        if key in self._cache_container:
+            del self._cache_container[key]
+
     def keys(self, pattern: str) -> List[str]:
         """
         获取所有符合pattern的key

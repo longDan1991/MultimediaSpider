@@ -112,7 +112,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     break
 
                 except Exception as ex:
-                    utils.logger.error(f"[XiaoHongShuCrawler.search] Get note detail error: {ex}")
+                    utils.logger.error(f"[XiaoHongShuCrawler.search] Search notes error: {ex}")
                     # 发生异常了，则打印当前爬取的关键词和页码，用于后续继续爬取
                     utils.logger.info(
                         "------------------------------------------记录当前爬取的关键词和页码------------------------------------------")

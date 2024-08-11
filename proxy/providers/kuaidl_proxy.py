@@ -46,6 +46,7 @@ def parse_kuaidaili_proxy(proxy_info: str) -> KuaidailiProxyModel:
 
 
 class KuaiDaiLiProxy(ProxyProvider):
+
     def __init__(self, kdl_user_name: str, kdl_user_pwd: str, kdl_secret_id: str, kdl_signature: str):
         """
 
@@ -117,6 +118,18 @@ class KuaiDaiLiProxy(ProxyProvider):
                 ip_infos.append(ip_info_model)
 
         return ip_cache_list + ip_infos
+
+    def mark_ip_invalid(self, ip_info: IpInfoModel) -> None:
+        """
+        标记IP为无效
+        Args:
+            ip_info:
+
+        Returns:
+
+        """
+        ip_key = f"{self.proxy_brand_name}_{ip_info.ip}_{ip_info.port}"
+        self.ip_cache.delete_ip(ip_key)
 
 
 def new_kuai_daili_proxy() -> KuaiDaiLiProxy:

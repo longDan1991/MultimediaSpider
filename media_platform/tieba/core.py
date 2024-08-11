@@ -1,32 +1,47 @@
 import asyncio
-import os
 import random
 from asyncio import Task
-from typing import Dict, List, Optional, Tuple
-
-from playwright.async_api import (BrowserContext, BrowserType, Page,
-                                  async_playwright)
+from typing import List, Optional
 
 import config
+import constant
+from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractCrawler
 from model.m_baidu_tieba import TiebaNote
+from proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
 from store import tieba as tieba_store
 from tools import utils
 from var import crawler_type_var
 
 from .client import BaiduTieBaClient
 from .field import SearchNoteType, SearchSortType
-from .login import BaiduTieBaLogin
 
 
 class TieBaCrawler(AbstractCrawler):
-    context_page: Page
-    tieba_client: BaiduTieBaClient
-    browser_context: BrowserContext
 
     def __init__(self) -> None:
-        self.index_url = "https://tieba.baidu.com"
-        self.user_agent = utils.get_user_agent()
+        self.tieba_client: Optional[BaiduTieBaClient] = None
+
+    async def create_tieba_client(self) -> None:
+        """
+        Create xhs client
+        Returns:
+
+        """
+        proxy_ip_pool: Optional[ProxyIpPool] = None
+        if config.ENABLE_IP_PROXY:
+            # 百度贴吧的代理验证很严格,经过测试1分钟一个IP就会被封，所以百度这边购买IP选择短时长
+            # 快代理：私密代理->按IP付费->专业版->IP有效时长为1分钟, 购买地址：https://www.kuaidaili.com/?ref=ldwkjqipvz6c
+            proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
+
+        self.tieba_client = BaiduTieBaClient(
+            account_with_ip_pool=AccountWithIpPoolManager(
+                platform_name=constant.TIEBA_PLATFORM_NAME,
+                account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+                proxy_ip_pool=proxy_ip_pool
+            )
+        )
+        await self.tieba_client.update_account_info()
 
     async def start(self) -> None:
         """
@@ -34,20 +49,7 @@ class TieBaCrawler(AbstractCrawler):
         Returns:
 
         """
-        ip_proxy_pool, httpx_proxy_format = None, None
-        if config.ENABLE_IP_PROXY:
-            pass
-            # utils.logger.info("[BaiduTieBaCrawler.start] Begin create ip proxy pool ...")
-            # ip_proxy_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
-            # ip_proxy_info: IpInfoModel = await ip_proxy_pool.get_proxy()
-            # _, httpx_proxy_format = format_proxy_info(ip_proxy_info)
-            # utils.logger.info(f"[BaiduTieBaCrawler.start] Init default ip proxy, value: {httpx_proxy_format}")
-
-        # Create a client to interact with the baidutieba website.
-        self.tieba_client = BaiduTieBaClient(
-            ip_pool=ip_proxy_pool,
-            default_ip_proxy=httpx_proxy_format,
-        )
+        await self.create_tieba_client()
         crawler_type_var.set(config.CRAWLER_TYPE)
         if config.CRAWLER_TYPE == "search":
             # Search for notes and retrieve their comment information.
@@ -96,9 +98,15 @@ class TieBaCrawler(AbstractCrawler):
                     await self.get_specified_notes(note_id_list=[note_detail.note_id for note_detail in notes_list])
                     page += 1
                 except Exception as ex:
-                    utils.logger.error(
-                        f"[BaiduTieBaCrawler.search] Search keywords error, current page: {page}, current keyword: {keyword}, err: {ex}")
-                    break
+                    utils.logger.error(f"[BaiduTieBaCrawler.search] Search notes error: {ex}")
+                    # 发生异常了，则打印当前爬取的关键词和页码，用于后续继续爬取
+                    utils.logger.info(
+                        "------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
+                    for i in range(50):
+                        utils.logger.error(f"[BaiduTieBaCrawler.search] Current keyword: {keyword}, page: {page}")
+                    utils.logger.info(
+                        "------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")
+                    return
 
     async def get_specified_tieba_notes(self):
         """
@@ -212,53 +220,3 @@ class TieBaCrawler(AbstractCrawler):
                 crawl_interval=random.random(),
                 callback=tieba_store.batch_update_tieba_note_comments
             )
-
-    async def launch_browser(
-            self,
-            chromium: BrowserType,
-            playwright_proxy: Optional[Dict],
-            user_agent: Optional[str],
-            headless: bool = True
-    ) -> BrowserContext:
-        """
-        Launch browser and create browser
-        Args:
-            chromium:
-            playwright_proxy:
-            user_agent:
-            headless:
-
-        Returns:
-
-        """
-        utils.logger.info("[BaiduTieBaCrawler.launch_browser] Begin create browser context ...")
-        if config.SAVE_LOGIN_STATE:
-            # feat issue #14
-            # we will save login state to avoid login every time
-            user_data_dir = os.path.join(os.getcwd(), "browser_data",
-                                         config.USER_DATA_DIR % config.PLATFORM)  # type: ignore
-            browser_context = await chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                accept_downloads=True,
-                headless=headless,
-                proxy=playwright_proxy,  # type: ignore
-                viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
-            )
-            return browser_context
-        else:
-            browser = await chromium.launch(headless=headless, proxy=playwright_proxy)  # type: ignore
-            browser_context = await browser.new_context(
-                viewport={"width": 1920, "height": 1080},
-                user_agent=user_agent
-            )
-            return browser_context
-
-    async def close(self):
-        """
-        Close browser context
-        Returns:
-
-        """
-        await self.browser_context.close()
-        utils.logger.info("[BaiduTieBaCrawler.close] Browser context closed ...")

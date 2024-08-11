@@ -53,6 +53,12 @@ class RedisCache(AbstractCache):
         """
         self._redis_client.set(key, pickle.dumps(value), ex=expire_time)
 
+    def delete(self, key: str) -> None:
+        """
+        删除键
+        """
+        self._redis_client.delete(key)
+
     def keys(self, pattern: str) -> List[str]:
         """
         获取所有符合pattern的key

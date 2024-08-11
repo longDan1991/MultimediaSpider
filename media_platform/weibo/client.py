@@ -92,7 +92,7 @@ class WeiboClient:
         """
         if config.ENABLE_IP_PROXY and self.account_info.ip_info and self.account_info.ip_info.is_expired:
             utils.logger.info(
-                f"[XiaoHongShuClient.request] current ip {self.account_info.ip_info.ip} is expired, "
+                f"[BaiduTieBaClient.request] current ip {self.account_info.ip_info.ip} is expired, "
                 f"mark it invalid and try to get a new one")
             await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
             self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()

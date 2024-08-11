@@ -29,6 +29,15 @@ class ProxyProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def mark_ip_invalid(self, ip: IpInfoModel) -> None:
+        """
+        标记 IP 为无效
+        :param ip:
+        :return:
+        """
+        pass
+
 
 class IpCache:
     def __init__(self):
@@ -43,6 +52,14 @@ class IpCache:
         :return:
         """
         self.cache_client.set(key=ip_key, value=ip_value_info, expire_time=ex)
+
+    def delete_ip(self, ip_key: str):
+        """
+        删除 IP
+        :param ip_key:
+        :return:
+        """
+        self.cache_client.delete(ip_key)
 
     def load_all_ip(self, proxy_brand_name: str) -> List[IpInfoModel]:
         """
