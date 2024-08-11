@@ -114,10 +114,12 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 except Exception as ex:
                     utils.logger.error(f"[XiaoHongShuCrawler.search] Get note detail error: {ex}")
                     # 打印当前爬取的关键词和页码，用于后续继续爬取
-                    utils.logger.info("------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
-                    for i in range (50):
+                    utils.logger.info(
+                        "------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
+                    for i in range(50):
                         utils.logger.error(f"[XiaoHongShuCrawler.search] Current keyword: {keyword}, page: {page}")
-                    utils.logger.info("------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")
+                    utils.logger.info(
+                        "------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")
                     return
 
     async def get_creators_and_notes(self) -> None:
@@ -161,17 +163,36 @@ class XiaoHongShuCrawler(AbstractCrawler):
 
     async def get_specified_notes(self):
         """Get the information and comments of the specified post"""
-        semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
-        fixed_xsec_token = "ABtXiOIX98byLlu-ju5dDq3tIc6uikcJrd3t7OYyqUbE4"
-        task_list = [
-            self.get_note_detail(note_id=note_id, xsec_source="pc_search", xsec_token=fixed_xsec_token,
-                                 semaphore=semaphore) for note_id in config.XHS_SPECIFIED_ID_LIST
+
+        async def get_note_detail_from_html_task(note_id: str, semaphore: asyncio.Semaphore) -> Dict:
+            async with semaphore:
+                try:
+                    _note_detail: Dict = await self.xhs_client.get_note_by_id_from_html(note_id)
+                    if not _note_detail:
+                        utils.logger.error(
+                            f"[XiaoHongShuCrawler.get_note_detail_from_html] Get note detail error, note_id: {note_id}")
+                        return {}
+                    return _note_detail
+                except DataFetchError as ex:
+                    utils.logger.error(f"[XiaoHongShuCrawler.get_note_detail_from_html] Get note detail error: {ex}")
+                    return {}
+                except KeyError as ex:
+                    utils.logger.error(
+                        f"[XiaoHongShuCrawler.get_note_detail_from_html] have not fund note detail note_id:{note_id}, err: {ex}")
+                    return {}
+
+        get_note_detail_task_list = [
+            get_note_detail_from_html_task(note_id=note_id, semaphore=asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)) for
+            note_id in config.XHS_SPECIFIED_ID_LIST
         ]
-        note_details = await asyncio.gather(*task_list)
+
+        need_get_comment_note_ids = []
+        note_details = await asyncio.gather(*get_note_detail_task_list)
         for note_detail in note_details:
             if note_detail is not None:
+                need_get_comment_note_ids.append(note_detail.get("note_id"))
                 await xhs_store.update_xhs_note(note_detail)
-        await self.batch_get_note_comments(config.XHS_SPECIFIED_ID_LIST)
+        await self.batch_get_note_comments(need_get_comment_note_ids)
 
     async def get_note_detail(self, note_id: str, xsec_source: str, xsec_token: str, semaphore: asyncio.Semaphore) -> \
             Optional[Dict]:

@@ -34,9 +34,10 @@ class AccountPoolManager:
             List[AccountInfoModel]: list of account info models
         """
         utils.logger.info(
-            f"[AccountPoolManager.load_accounts_from_xlsx] load account from {self._platform_name}_account.xlsx")
-        account_file_path = f"account_pool/{self._platform_name}_account.xlsx"
-        df = pd.read_excel(account_file_path, engine='openpyxl')
+            f"[AccountPoolManager.load_accounts_from_xlsx] load account from {self._platform_name} accounts_cookies.xlsx")
+        account_cookies_file_name = "accounts_cookies.xlsx"
+        account_cookies_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), account_cookies_file_name)
+        df = pd.read_excel(account_cookies_file_path, sheet_name=self._platform_name, engine='openpyxl')
         account_id = 1
         for _, row in df.iterrows():
             account = AccountInfoModel(
@@ -136,7 +137,8 @@ class AccountWithIpPoolManager(AccountPoolManager):
         ip: Optional[IpInfoModel] = None
         if self.proxy_ip_pool is not None:
             ip = await self.proxy_ip_pool.get_proxy()
-            utils.logger.info(f"[AccountWithIpPoolManager.get_account_with_ip] enable proxy ip pool, get proxy ip: {ip}")
+            utils.logger.info(
+                f"[AccountWithIpPoolManager.get_account_with_ip] enable proxy ip pool, get proxy ip: {ip}")
         return AccountWithIpModel(account=account, ip=ip)
 
     async def mark_account_invalid(self, account: AccountInfoModel):
@@ -163,11 +165,13 @@ class AccountWithIpPoolManager(AccountPoolManager):
             return
         await self.proxy_ip_pool.mark_ip_invalid(ip)
 
+
 async def test_get_account_with_ip():
     account_pool_manager = AccountWithIpPoolManager(constant.XHS_PLATFORM_NAME)
     account_with_ip = await account_pool_manager.get_account_with_ip()
     print(account_with_ip)
     return account_with_ip
+
 
 if __name__ == '__main__':
     asyncio.run(test_get_account_with_ip())

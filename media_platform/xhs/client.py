@@ -1,10 +1,11 @@
 import asyncio
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
-from urllib.parse import urlencode
+from typing import Callable, Dict, List, Optional, Union
+from urllib.parse import urlencode, urlparse, parse_qs
 
 import httpx
+from httpx import Response
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
@@ -97,7 +98,6 @@ class XiaoHongShuClient(AbstractApiClient):
     @property
     def headers(self):
         return {
-            # "User-Agent": self._user_agent,
             "Content-Type": "application/json;charset=UTF-8",
             "Accept": "application/json, text/plain, */*",
             "Cookie": self._cookies,
@@ -106,8 +106,8 @@ class XiaoHongShuClient(AbstractApiClient):
             "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         }
 
-    # @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
-    async def request(self, method, url, **kwargs) -> Union[str, Any]:
+    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
+    async def request(self, method, url, **kwargs) -> Union[Response, Dict]:
         """
         封装httpx的公共请求方法，对请求响应做一些处理
         Args:
@@ -118,11 +118,19 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
+        need_return_ori_response = kwargs.get("return_response", False)
+        if "return_response" in kwargs:
+            del kwargs["return_response"]
+
         async with httpx.AsyncClient(proxies=self._proxies) as client:
             response = await client.request(
                 method, url, timeout=self.timeout,
                 **kwargs
             )
+
+        if need_return_ori_response:
+            return response
+
         try:
             data = response.json()
         except json.decoder.JSONDecodeError:
@@ -144,7 +152,7 @@ class XiaoHongShuClient(AbstractApiClient):
         else:
             raise DataFetchError(data, response=response)
 
-    async def get(self, uri: str, params=None) -> Dict:
+    async def get(self, uri: str, params=None, **kwargs) -> Union[Response, Dict]:
         """
         GET请求，对请求头签名
         Args:
@@ -160,7 +168,7 @@ class XiaoHongShuClient(AbstractApiClient):
                          f"{urlencode(params)}")
         try:
             headers = await self._pre_headers(final_uri)
-            res = await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
+            res = await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs)
             return res
         except RetryError:
             utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
@@ -168,9 +176,9 @@ class XiaoHongShuClient(AbstractApiClient):
             await self.mark_account_invalid(self._current_account_with_ip)
             await self.update_account_info()
             headers = await self._pre_headers(final_uri)
-            return await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers)
+            return await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs)
 
-    async def post(self, uri: str, data: dict) -> Dict:
+    async def post(self, uri: str, data: dict, **kwargs) -> Union[Dict, Response]:
         """
         POST请求，对请求头签名
         Args:
@@ -184,7 +192,7 @@ class XiaoHongShuClient(AbstractApiClient):
         try:
             headers = await self._pre_headers(uri, data)
             res = await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
-                                     data=json_str, headers=headers)
+                                     data=json_str, headers=headers, **kwargs)
             return res
         except RetryError:
             utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
@@ -193,7 +201,7 @@ class XiaoHongShuClient(AbstractApiClient):
             await self.update_account_info()
             headers = await self._pre_headers(uri, data)
             return await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
-                                      data=json_str, headers=headers)
+                                      data=json_str, headers=headers, **kwargs)
 
     async def pong(self) -> bool:
         """
@@ -211,6 +219,7 @@ class XiaoHongShuClient(AbstractApiClient):
         except Exception as e:
             utils.logger.error(f"[XiaoHongShuClient.pong] Ping xhs failed: {e}, and try to login again...")
             ping_flag = False
+        utils.logger.info(f"[XiaoHongShuClient.pong] Login state result: {ping_flag}")
         return ping_flag
 
     async def get_note_by_keyword(
@@ -253,7 +262,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        if xsec_source == "":
+        if not xsec_source:
             xsec_source = "pc_search"
 
         data = {
@@ -397,8 +406,8 @@ class XiaoHongShuClient(AbstractApiClient):
         eg: https://www.xiaohongshu.com/user/profile/59d8cb33de5fb4696bf17217
         """
         uri = f"/user/profile/{user_id}"
-        html_content = await self.request("GET", XHS_INDEX_URL + uri, return_response=True)
-        match = re.search(r'<script>window.__INITIAL_STATE__=(.+)<\/script>', html_content, re.M)
+        response: Response = await self.request("GET", XHS_INDEX_URL + uri, return_response=True)
+        match = re.search(r'<script>window.__INITIAL_STATE__=(.+)<\/script>', response.text, re.M)
 
         if match is None:
             return {}
@@ -469,3 +478,62 @@ class XiaoHongShuClient(AbstractApiClient):
             await asyncio.sleep(crawl_interval)
             result.extend(notes)
         return result
+
+    async def get_note_by_id_from_html(self, note_id: str):
+        """
+        通过解析网页版的笔记详情页HTML，获取笔记详情
+        Args:
+            note_id:
+
+        Returns:
+
+        """
+        def camel_to_underscore(key):
+            return re.sub(r"(?<!^)(?=[A-Z])", "_", key).lower()
+
+        def transform_json_keys(json_data):
+            data_dict = json.loads(json_data)
+            dict_new = {}
+            for key, value in data_dict.items():
+                new_key = camel_to_underscore(key)
+                if not value:
+                    dict_new[new_key] = value
+                elif isinstance(value, dict):
+                    dict_new[new_key] = transform_json_keys(json.dumps(value))
+                elif isinstance(value, list):
+                    dict_new[new_key] = [
+                        transform_json_keys(json.dumps(item))
+                        if (item and isinstance(item, dict))
+                        else item
+                        for item in value
+                    ]
+                else:
+                    dict_new[new_key] = value
+            return dict_new
+
+        url = "https://www.xiaohongshu.com/explore/" + note_id
+        res = await self.request(method="GET", url=url, return_response=True, headers=self.headers)
+        html = res.text
+        state = re.findall(r"window.__INITIAL_STATE__=({.*})</script>", html)[0].replace("undefined", '""')
+        if state != "{}":
+            note_dict = transform_json_keys(state)
+            return note_dict["note"]["note_detail_map"][note_id]["note"]
+        elif ErrorEnum.IP_BLOCK.value in html:
+            raise IPBlockError(ErrorEnum.IP_BLOCK.value)
+        raise DataFetchError(html)
+
+    async def get_note_short_url(self, note_id: str) -> Dict:
+        """
+        获取笔记的短链接
+        Args:
+            note_id: 笔记ID
+
+        Returns:
+
+        """
+        uri = f"/api/sns/web/short_url"
+        data = {
+            "original_url": f"{XHS_INDEX_URL}/discovery/item/{note_id}?a=1"
+        }
+        response: Response = await self.post(uri, data=data, return_response=True)
+        return response.json()

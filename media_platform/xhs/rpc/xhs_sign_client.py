@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import json
+import asyncio
 from typing import Any, Dict, Optional, Union
 
 import httpx
@@ -38,14 +38,16 @@ class XhsSignClient:
                     method, url, timeout=self._timeout,
                     **kwargs
                 )
+            if response.status_code != 200:
+                utils.logger.error(f"[XhsSignClient.request]  response status code {response.status_code} response content: {response.text}")
+                raise SignError(f"请求签名服务器失败，状态码：{response.status_code}")
+
             data = response.json()
             return data
-        except json.decoder.JSONDecodeError:
-            return response.text
-
         except Exception as e:
-            utils.logger.error(f"[XhsSignClient.request] request error: {e}")
-            return None
+            raise SignError(f"请求签名服务器失败，状态码：{response.status_code}, error: {e}")
+
+
 
     async def sign(self, uri: str, data: Optional[Dict] = None, cookies: str = None) -> Optional[XhsSignResponse]:
         """
@@ -64,20 +66,15 @@ class XhsSignClient:
             data=data,
             cookies=cookies
         )
-        post_data = {
-            "uri": uri,
-            "data": data,
-            "cookies": cookies
-        }
-        res_json = await self.request(method="POST", url=sign_server_uri, json=post_data)
+        res_json = await self.request(method="POST", url=sign_server_uri, json=xhs_sign_req.model_dump())
         if not res_json:
             raise SignError(f"从签名服务器:{XHS_SIGN_SERVER_URL}{sign_server_uri} 获取签名失败")
 
         xhs_sign_response = XhsSignResponse(**res_json)
         if xhs_sign_response.isok:
             return xhs_sign_response
-        raise SignError(f"从签名服务器:{XHS_SIGN_SERVER_URL}{sign_server_uri} 获取签名失败，原因：{xhs_sign_response.msg}, sign reponse: {xhs_sign_response}")
-
+        raise SignError(
+            f"从签名服务器:{XHS_SIGN_SERVER_URL}{sign_server_uri} 获取签名失败，原因：{xhs_sign_response.msg}, sign reponse: {xhs_sign_response}")
 
     async def pong_sign_server(self):
         """
@@ -89,3 +86,6 @@ class XhsSignClient:
         utils.logger.info("[XhsSignClient.pong_sign_server] xhs sign server is alive")
 
 
+if __name__ == '__main__':
+    xhs_sign_client = XhsSignClient()
+    asyncio.run(xhs_sign_client.pong_sign_server())

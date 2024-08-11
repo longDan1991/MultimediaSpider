@@ -9,7 +9,7 @@ COOKIES = "xsecappid=xhs-pc-web;acw_tc=26a3caa877c75c19212f9cb76ec968cfe91abff9d
 SORT_TYPE = "popularity_descending"
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持抖音
 PUBLISH_TIME_TYPE = 0
-CRAWLER_TYPE = "search"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
+CRAWLER_TYPE = "detail"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
 
 # 是否开启 IP 代理
 ENABLE_IP_PROXY = False
@@ -51,7 +51,7 @@ MAX_CONCURRENCY_NUM = 1
 ENABLE_GET_IMAGES = False
 
 # 是否开启爬评论模式, 默认不开启爬评论
-ENABLE_GET_COMMENTS = True
+ENABLE_GET_COMMENTS = False
 
 # 是否开启爬二级评论模式, 默认不开启爬二级评论
 # 老版本项目使用了 db, 则需参考 schema/tables.sql line 287 增加表字段
@@ -59,10 +59,7 @@ ENABLE_GET_SUB_COMMENTS = False
 
 # 指定小红书需要爬虫的笔记ID列表
 XHS_SPECIFIED_ID_LIST = [
-    "6422c2750000000027000d88",
-    "64ca1b73000000000b028dd2",
-    "630d5b85000000001203ab41",
-    "668fe13000000000030241fa",  # 图文混合
+    "6672c38c000000001c02aeb4",
     # ........................
 ]
 
