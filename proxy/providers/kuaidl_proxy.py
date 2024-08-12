@@ -9,6 +9,7 @@ from typing import Dict, List
 import httpx
 from pydantic import BaseModel, Field
 
+import config
 from proxy import IpCache, IpInfoModel, ProxyProvider
 from proxy.types import ProviderNameEnum
 from tools import utils
@@ -139,8 +140,8 @@ def new_kuai_daili_proxy() -> KuaiDaiLiProxy:
 
     """
     return KuaiDaiLiProxy(
-        kdl_secret_id=os.getenv("kdl_secret_id", "你的快代理secert_id"),
-        kdl_signature=os.getenv("kdl_signature", "你的快代理签名"),
-        kdl_user_name=os.getenv("kdl_user_name", "你的快代理用户名"),
-        kdl_user_pwd=os.getenv("kdl_user_pwd", "你的快代理密码"),
+        kdl_secret_id=config.KDL_SECERT_ID,
+        kdl_signature=config.KDL_SIGNATURE,
+        kdl_user_name=config.KDL_USER_NAME,
+        kdl_user_pwd=config.KDL_USER_PWD,
     )

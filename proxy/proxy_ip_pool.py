@@ -99,7 +99,6 @@ class ProxyIpPool:
 
 
 IpProxyProvider: Dict[str, ProxyProvider] = {
-    # ProviderNameEnum.JISHU_HTTP_PROVIDER.value: new_jisu_http_proxy(),
     ProviderNameEnum.KUAI_DAILI_PROVIDER.value: new_kuai_daili_proxy()
 }
 

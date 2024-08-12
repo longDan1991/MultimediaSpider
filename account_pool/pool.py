@@ -35,7 +35,7 @@ class AccountPoolManager:
         """
         utils.logger.info(
             f"[AccountPoolManager.load_accounts_from_xlsx] load account from {self._platform_name} accounts_cookies.xlsx")
-        account_cookies_file_name = "accounts_cookies.xlsx"
+        account_cookies_file_name = "../config/accounts_cookies.xlsx"
         account_cookies_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), account_cookies_file_name)
         df = pd.read_excel(account_cookies_file_path, sheet_name=self._platform_name, engine='openpyxl')
         account_id = 1

@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: mediacrawler
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - RELATION_DB_USER=root
+      - RELATION_DB_HOST=mysql_db
+      - RELATION_DB_PWD=123456
+      - RELATION_DB_PORT=3306
+      - RELATION_DB_NAME=media_crawler
+      - REDIS_DB_HOST=redis_cache
+      - REDIS_DB_PWD=123456
+      - REDIS_DB_PORT=6379
+      - REDIS_DB_NUM=0
+    command: python main.py --platform xhs --type search  # 添加启动命令
+
+
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: media_crawler
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.0
+    container_name: redis_cache
+    environment:
+      REDIS_PASSWORD: 123456
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis_data:/data
+    command: [ "redis-server", "--requirepass", "123456" ]
+
+volumes:
+  mysql_db_data:
+  redis_data:

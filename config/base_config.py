@@ -5,40 +5,19 @@ from constant import EXCEL_ACCOUNT_SAVE
 
 PLATFORM = "xhs"
 KEYWORDS = "python,golang,java"
-LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
-COOKIES = "xsecappid=xhs-pc-web;acw_tc=26a3caa877c75c19212f9cb76ec968cfe91abff9d70b718e0b2bb43572d94cdf;websectiga=a9bdcaed0af874f3a1431e94fbea410e8f738542fbb02df1e8e30c29ef3d91ac;webBuild=4.28.5;sec_poison_id=8644aaa7-f55f-47b8-8796-10d761496141;web_session=0400698e2cfed1566705c7a280344b56b799f4;gid=yjyqKjK20420yjyqKjK248DiW4f2vICiF7iC6UA62Vj0d7q83Tq8hf888q2Y4y48JWfj28YY;a1=19136965474d5ynxfrufxm5j9aeik30v50mudbfpq30000358414;abRequestId=3719aa32-3d1a-51fd-899e-60ed92474443;unread={%22ub%22:%2266b4aeb7000000000901730d%22%2C%22ue%22:%2266ac419e000000000503b10a%22%2C%22uc%22:27};webId=8377299b44973ba641284984fb5c117c"
+
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持小红书
 SORT_TYPE = "popularity_descending"
+
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持抖音
 PUBLISH_TIME_TYPE = 0
-CRAWLER_TYPE = "detail"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
-
-# 是否开启 IP 代理
-ENABLE_IP_PROXY = True
-
-# 代理IP池数量
-IP_PROXY_POOL_COUNT = 2
-
-# 代理IP提供商名称
-IP_PROXY_PROVIDER_NAME = "kuaidaili"
-
-# 设置为True不会打开浏览器（无头浏览器）
-# 设置False会打开一个浏览器
-# 小红书如果一直扫码登录不通过，打开浏览器手动过一下滑动验证码
-# 抖音如果一直提示失败，打开浏览器看下是否扫码登录之后出现了手机号验证，如果出现了手动过一下再试。
-HEADLESS = False
-
-# 是否保存登录状态
-SAVE_LOGIN_STATE = True
+CRAWLER_TYPE = "search"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
 
 # 数据保存类型选项配置,支持三种类型：csv、db、json
 SAVE_DATA_OPTION = "db"  # csv or db or json
 
 # 账号池保存类型选项配置,支持2种类型：xlsx、mysql
 ACCOUNT_POOL_SAVE_TYPE = EXCEL_ACCOUNT_SAVE
-
-# 用户浏览器缓存的浏览器文件配置
-USER_DATA_DIR = "%s_user_data_dir"  # %s will be replaced by platform name
 
 # 爬取开始页数 默认从第一页开始
 START_PAGE = 1
@@ -48,9 +27,6 @@ CRAWLER_MAX_NOTES_COUNT = 200
 
 # 并发爬虫数量控制
 MAX_CONCURRENCY_NUM = 10
-
-# 是否开启爬图片模式, 默认不开启爬图片
-ENABLE_GET_IMAGES = False
 
 # 是否开启爬评论模式, 默认不开启爬评论
 ENABLE_GET_COMMENTS = True
@@ -87,18 +63,3 @@ XHS_CREATOR_ID_LIST = [
     # ........................
 ]
 
-# 词云相关
-# 是否开启生成评论词云图
-ENABLE_GET_WORDCLOUD = False
-# 自定义词语及其分组
-# 添加规则：xx:yy 其中xx为自定义添加的词组，yy为将xx该词组分到的组名。
-CUSTOM_WORDS = {
-    '零几': '年份',  # 将“零几”识别为一个整体
-    '高频词': '专业术语'  # 示例自定义词
-}
-
-# 停用(禁用)词文件路径
-STOP_WORDS_FILE = "./docs/hit_stopwords.txt"
-
-# 中文字体文件路径
-FONT_PATH = "./docs/STZHONGS.TTF"
