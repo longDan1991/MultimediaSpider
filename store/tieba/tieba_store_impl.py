@@ -8,9 +8,8 @@ from typing import Dict
 
 import aiofiles
 
-import config
 from base.base_crawler import AbstractStore
-from tools import utils, words
+from tools import utils
 from var import crawler_type_var
 
 
@@ -24,14 +23,14 @@ def calculate_number_of_files(file_store_path: str) -> int:
     if not os.path.exists(file_store_path):
         return 1
     try:
-        return max([int(file_name.split("_")[0])for file_name in os.listdir(file_store_path)])+1
+        return max([int(file_name.split("_")[0]) for file_name in os.listdir(file_store_path)]) + 1
     except ValueError:
         return 1
 
 
 class TieBaCsvStoreImplement(AbstractStore):
     csv_store_path: str = "data/tieba"
-    file_count:int=calculate_number_of_files(csv_store_path)
+    file_count: int = calculate_number_of_files(csv_store_path)
 
     def make_save_file_name(self, store_type: str) -> str:
         """
@@ -161,12 +160,10 @@ class TieBaDbStoreImplement(AbstractStore):
 
 class TieBaJsonStoreImplement(AbstractStore):
     json_store_path: str = "data/tieba/json"
-    words_store_path: str = "data/tieba/words"
     lock = asyncio.Lock()
-    file_count:int=calculate_number_of_files(json_store_path)
-    WordCloud = words.AsyncWordCloudGenerator()
+    file_count: int = calculate_number_of_files(json_store_path)
 
-    def make_save_file_name(self, store_type: str) -> (str,str):
+    def make_save_file_name(self, store_type: str) -> (str, str):
         """
         make save file name by store type
         Args:
@@ -176,10 +173,7 @@ class TieBaJsonStoreImplement(AbstractStore):
 
         """
 
-        return (
-            f"{self.json_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.json",
-            f"{self.words_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}"
-        )
+        return f"{self.json_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.json"
 
     async def save_data_to_json(self, save_item: Dict, store_type: str):
         """
@@ -192,8 +186,7 @@ class TieBaJsonStoreImplement(AbstractStore):
 
         """
         pathlib.Path(self.json_store_path).mkdir(parents=True, exist_ok=True)
-        pathlib.Path(self.words_store_path).mkdir(parents=True, exist_ok=True)
-        save_file_name,words_file_name_prefix = self.make_save_file_name(store_type=store_type)
+        save_file_name = self.make_save_file_name(store_type=store_type)
         save_data = []
 
         async with self.lock:
@@ -205,11 +198,6 @@ class TieBaJsonStoreImplement(AbstractStore):
             async with aiofiles.open(save_file_name, 'w', encoding='utf-8') as file:
                 await file.write(json.dumps(save_data, ensure_ascii=False))
 
-            if config.ENABLE_GET_COMMENTS and config.ENABLE_GET_WORDCLOUD:
-                try:
-                    await self.WordCloud.generate_word_frequency_and_cloud(save_data, words_file_name_prefix)
-                except:
-                    pass
     async def store_content(self, content_item: Dict):
         """
         content JSON storage implementation

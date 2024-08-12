@@ -7,36 +7,11 @@ import base64
 import random
 import re
 from io import BytesIO
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 
-import httpx
 from PIL import Image, ImageDraw  # type: ignore
-from playwright.async_api import Cookie, Page
 
 from . import utils
-
-
-async def find_login_qrcode(page: Page, selector: str) -> str:
-    """find login qrcode image from target selector"""
-    try:
-        elements = await page.wait_for_selector(
-            selector=selector,
-        )
-        login_qrcode_img = str(await elements.get_property("src"))  # type: ignore
-        if "http://" in login_qrcode_img or "https://" in login_qrcode_img:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                utils.logger.info(f"[find_login_qrcode] get qrcode by url:{login_qrcode_img}")
-                resp = await client.get(login_qrcode_img, headers={"User-Agent": get_user_agent()})
-                if resp.status_code == 200:
-                    image_data = resp.content
-                    base64_image = base64.b64encode(image_data).decode('utf-8')
-                    return base64_image
-                raise Exception(f"fetch login image url failed, response message:{resp.text}")
-        return login_qrcode_img
-
-    except Exception as e:
-        print(e)
-        return ""
 
 
 def show_qrcode(qr_code) -> None:  # type: ignore
@@ -93,16 +68,6 @@ def get_mobile_user_agent() -> str:
         "Mozilla/5.0 (Linux; Android 10; JNY-LX1; HMSCore 6.11.0.302) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.88 HuaweiBrowser/13.0.5.303 Mobile Safari/537.36"
     ]
     return random.choice(ua_list)
-
-
-def convert_cookies(cookies: Optional[List[Cookie]]) -> Tuple[str, Dict]:
-    if not cookies:
-        return "", {}
-    cookies_str = ";".join([f"{cookie.get('name')}={cookie.get('value')}" for cookie in cookies])
-    cookie_dict = dict()
-    for cookie in cookies:
-        cookie_dict[cookie.get('name')] = cookie.get('value')
-    return cookies_str, cookie_dict
 
 
 def convert_str_cookie_to_dict(cookie_str: str) -> Dict:

@@ -4,6 +4,8 @@
 # @Desc    :
 from typing import List
 
+import config
+
 from . import xhs_store_impl
 from .xhs_store_impl import *
 

@@ -5,7 +5,7 @@
 
 import re
 from typing import List
-
+import config
 from .weibo_store_impl import *
 
 
