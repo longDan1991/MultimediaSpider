@@ -1,13 +1,18 @@
-> **免责声明：**
-> 
-> 大家请以学习为目的使用本仓库，爬虫违法违规的案件：https://github.com/HiddenStrawberry/Crawler_Illegal_Cases_In_China  <br>
->
->本仓库的所有内容仅供学习和参考之用，禁止用于商业用途。任何人或组织不得将本仓库的内容用于非法用途或侵犯他人合法权益。本仓库所涉及的爬虫技术仅用于学习和研究，不得用于对其他平台进行大规模爬虫或其他非法行为。对于因使用本仓库内容而引起的任何法律责任，本仓库不承担任何责任。使用本仓库的内容即表示您同意本免责声明的所有条款和条件。
+## 免责声明
 
-> 点击查看更为详细的免责声明。[点击跳转](#disclaimer)
+本仓库的所有内容仅供学习使用，禁止用于商业用途。任何人或组织不得将本仓库的内容用于非法用途或侵犯他人合法权益。
+
+我们提供的爬虫仅能获取抖音、快手、哔哩哔哩、小红书、百度贴吧、微博平台上**公开的信息**，
+
+我们强烈反对任何形式的隐私侵犯行为。如果你使用本项目进行了侵犯他人隐私的行为，我们将与你保持距离，并支持受害者通过法律手段维护自己的权益。<br>
+
+对于因使用本仓库内容而引起的任何法律责任，本仓库不承担任何责任。使用本仓库的内容即表示您同意本免责声明的所有条款和条件<br>
+
+点击查看更为详细的免责声明。[点击跳转](#disclaimer)
 
 ## Pro版本诞生的背景
 [MediaCrawler](https://github.com/NanmiCoder/MediaCrawler)这个项目开源至今获得了大量的关注，同时也暴露出来了一系列问题，比如：
+- 能否支持多账号？
 - 能否在linux部署？
 - 能否去掉playwright的依赖？
 - 有没有更简单的部署方法？
@@ -28,6 +33,17 @@
 - 多账号+IP代理池的支持，让爬虫更加稳定。
 - 新增签名服务，解耦签名逻辑，让爬虫更加灵活。
 
+## 功能列表
+| 平台   | 关键词搜索 | 指定帖子ID爬取 | 二级评论 | 指定创作者主页 | 账号池+IP代理池 |
+|------|-------|----------|------|---------|-----------|
+| 小红书  | ✅     | ✅        | ✅    | ✅       | ✅         |
+| 微博   | ✅     | ✅        | ✅    | ✅       | ✅         |
+| 百度贴吧 | ✅     | ✅        | ✅    | ✅       | ✅         |
+| 抖音   | ❌     | ❌        | ❌    | ❌       | ❌         |
+| 快手   | ❌     | ❌        | ❌    | ❌       | ❌         |
+| B 站  | ❌     | ❌        | ❌    | ❌       | ❌         |
+
+
 ## 待办事项
 - [x] 小红书爬虫重构
 - [x] 微博爬虫重构
@@ -37,6 +53,87 @@
 - [ ] 快手爬虫重构
 - [ ] 封装成API版本
 - [ ] 提供可视化界面
+
+## Pro版本使用教程
+
+### 本地部署
+
+#### 1、新建Pro版本目录
+```shell
+# 新建目录MediaCrawlerPro并进入
+mkdir MediaCrawlerPro
+cd MediaCrawlerPro
+```
+
+##### 2、克隆签名服务仓库并安装依赖
+```shell
+# 先克隆签名服务仓库并安装依赖
+git clone https://github.com/MediaCrawlerPro/MediaCrawlerPro-SignSrv
+cd MediaCrawlerPro-SignSrv
+
+# 创建虚拟环境并安装签名服务的依赖，
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+##### 3、启动签名服务
+```shell
+python app.py 
+```
+
+##### 4、克隆主项目仓库并安装依赖
+```shell
+# 再克隆主项目仓库
+git clone https://github.com/MediaCrawlerPro/MediaCrawlerPro-Python.git
+
+# 进入项目目录
+cd MediaCrawlerPro-Python
+
+# 创建虚拟环境 & 安装依赖
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+##### 5、配置账号池+IP代理信息
+Pro版本强烈推荐`IP代理+账号池`，代码层面基于这两者做了大量的重试机制来保障爬虫的稳定性。
+配置文档见：[配置说明](config/README.md)
+
+##### 6、配置数据存储方式
+强力推荐使用数据库存储数据，使用`db存储`，代码层面有判断重复机制，如果是json和csv则没有。<br>
+配置路径：在config/db_config.py中配置数据库的连接信息，包括数据库类型、数据库地址、数据库端口、数据库名、数据库用户名、数据库密码。
+
+##### 6、启动主项目进行爬虫
+搜索关键词以及其他的信息还是跟MediaCrawler的配置一样，在`config/base_config.py`中配置即可。
+```shell
+python main.py --platform xhs --type search
+```
+
+##### 7、查看数据
+> 不再推荐你使用csv和json存储，存储效率慢，还做不到排重，使用mysql存数据非常方便和高效
+数据存储在数据库中，可以通过数据库客户端查看数据。
+
+### docker部署
+```shell
+# 新建目录MediaCrawlerPro并进入
+mkdir MediaCrawlerPro
+cd MediaCrawlerPro
+
+# 先克隆签名服务仓库并构建镜像
+git clone https://github.com/MediaCrawlerPro/MediaCrawlerPro-SignSrv
+cd MediaCrawlerPro-SignSrv
+docker build -t mediacrawler_signsrv . 
+
+# 再克隆主项目仓库
+git clone https://github.com/MediaCrawlerPro/MediaCrawlerPro-Python.git
+
+# 进入项目目录
+cd MediaCrawlerPro-Python
+
+# 构建项目
+docker-compose up --build  
+```
+
 
 ## 免责声明
 <div id="disclaimer"> 
