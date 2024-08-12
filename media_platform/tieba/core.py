@@ -48,6 +48,10 @@ class TieBaCrawler(AbstractCrawler):
 
         """
         crawler_type_var.set(config.CRAWLER_TYPE)
+        if not await self.tieba_client.pong():
+            utils.logger.error("[TieBaCrawler.start] 登录态已经失效，请重新替换Cookies尝试")
+            return
+
         if config.CRAWLER_TYPE == "search":
             # Search for notes and retrieve their comment information.
             await self.search()
@@ -58,7 +62,7 @@ class TieBaCrawler(AbstractCrawler):
         else:
             pass
 
-        utils.logger.info("[BaiduTieBaCrawler.start] Tieba Crawler finished ...")
+        utils.logger.info("[TieBaCrawler.start] Tieba Crawler finished ...")
 
     async def search(self) -> None:
         """
@@ -66,21 +70,21 @@ class TieBaCrawler(AbstractCrawler):
         Returns:
 
         """
-        utils.logger.info("[BaiduTieBaCrawler.search] Begin search baidu tieba keywords")
+        utils.logger.info("[TieBaCrawler.search] Begin search baidu tieba keywords")
         tieba_limit_count = 10  # tieba limit page fixed value
         if config.CRAWLER_MAX_NOTES_COUNT < tieba_limit_count:
             config.CRAWLER_MAX_NOTES_COUNT = tieba_limit_count
         start_page = config.START_PAGE
         for keyword in config.KEYWORDS.split(","):
-            utils.logger.info(f"[BaiduTieBaCrawler.search] Current search keyword: {keyword}")
+            utils.logger.info(f"[TieBaCrawler.search] Current search keyword: {keyword}")
             page = 1
             while (page - start_page + 1) * tieba_limit_count <= config.CRAWLER_MAX_NOTES_COUNT:
                 if page < start_page:
-                    utils.logger.info(f"[BaiduTieBaCrawler.search] Skip page {page}")
+                    utils.logger.info(f"[TieBaCrawler.search] Skip page {page}")
                     page += 1
                     continue
                 try:
-                    utils.logger.info(f"[BaiduTieBaCrawler.search] search tieba keyword: {keyword}, page: {page}")
+                    utils.logger.info(f"[TieBaCrawler.search] search tieba keyword: {keyword}, page: {page}")
                     notes_list: List[TiebaNote] = await self.tieba_client.get_notes_by_keyword(
                         keyword=keyword,
                         page=page,
@@ -89,18 +93,18 @@ class TieBaCrawler(AbstractCrawler):
                         note_type=SearchNoteType.FIXED_THREAD
                     )
                     if not notes_list:
-                        utils.logger.info(f"[BaiduTieBaCrawler.search] Search note list is empty")
+                        utils.logger.info(f"[TieBaCrawler.search] Search note list is empty")
                         break
-                    utils.logger.info(f"[BaiduTieBaCrawler.search] Note list len: {len(notes_list)}")
+                    utils.logger.info(f"[TieBaCrawler.search] Note list len: {len(notes_list)}")
                     await self.get_specified_notes(note_id_list=[note_detail.note_id for note_detail in notes_list])
                     page += 1
                 except Exception as ex:
-                    utils.logger.error(f"[BaiduTieBaCrawler.search] Search notes error: {ex}")
+                    utils.logger.error(f"[TieBaCrawler.search] Search notes error: {ex}")
                     # 发生异常了，则打印当前爬取的关键词和页码，用于后续继续爬取
                     utils.logger.info(
                         "------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
                     for i in range(50):
-                        utils.logger.error(f"[BaiduTieBaCrawler.search] Current keyword: {keyword}, page: {page}")
+                        utils.logger.error(f"[TieBaCrawler.search] Current keyword: {keyword}, page: {page}")
                     utils.logger.info(
                         "------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")
                     return
@@ -116,7 +120,7 @@ class TieBaCrawler(AbstractCrawler):
             config.CRAWLER_MAX_NOTES_COUNT = tieba_limit_count
         for tieba_name in config.TIEBA_NAME_LIST:
             utils.logger.info(
-                f"[BaiduTieBaCrawler.get_specified_tieba_notes] Begin get tieba name: {tieba_name}")
+                f"[TieBaCrawler.get_specified_tieba_notes] Begin get tieba name: {tieba_name}")
             page_number = 0
             while page_number <= config.CRAWLER_MAX_NOTES_COUNT:
                 note_list: List[TiebaNote] = await self.tieba_client.get_notes_by_tieba_name(
@@ -125,11 +129,11 @@ class TieBaCrawler(AbstractCrawler):
                 )
                 if not note_list:
                     utils.logger.info(
-                        f"[BaiduTieBaCrawler.get_specified_tieba_notes] Get note list is empty")
+                        f"[TieBaCrawler.get_specified_tieba_notes] Get note list is empty")
                     break
 
                 utils.logger.info(
-                    f"[BaiduTieBaCrawler.get_specified_tieba_notes] tieba name: {tieba_name} note list len: {len(note_list)}")
+                    f"[TieBaCrawler.get_specified_tieba_notes] tieba name: {tieba_name} note list len: {len(note_list)}")
                 await self.get_specified_notes([note.note_id for note in note_list])
                 page_number += tieba_limit_count
 
@@ -166,19 +170,19 @@ class TieBaCrawler(AbstractCrawler):
         """
         async with semaphore:
             try:
-                utils.logger.info(f"[BaiduTieBaCrawler.get_note_detail] Begin get note detail, note_id: {note_id}")
+                utils.logger.info(f"[TieBaCrawler.get_note_detail] Begin get note detail, note_id: {note_id}")
                 note_detail: TiebaNote = await self.tieba_client.get_note_by_id(note_id)
                 if not note_detail:
                     utils.logger.error(
-                        f"[BaiduTieBaCrawler.get_note_detail] Get note detail error, note_id: {note_id}")
+                        f"[TieBaCrawler.get_note_detail] Get note detail error, note_id: {note_id}")
                     return None
                 return note_detail
             except Exception as ex:
-                utils.logger.error(f"[BaiduTieBaCrawler.get_note_detail] Get note detail error: {ex}")
+                utils.logger.error(f"[TieBaCrawler.get_note_detail] Get note detail error: {ex}")
                 return None
             except KeyError as ex:
                 utils.logger.error(
-                    f"[BaiduTieBaCrawler.get_note_detail] have not fund note detail note_id:{note_id}, err: {ex}")
+                    f"[TieBaCrawler.get_note_detail] have not fund note detail note_id:{note_id}, err: {ex}")
                 return None
 
     async def batch_get_note_comments(self, note_detail_list: List[TiebaNote]):
@@ -211,7 +215,7 @@ class TieBaCrawler(AbstractCrawler):
 
         """
         async with semaphore:
-            utils.logger.info(f"[BaiduTieBaCrawler.get_comments] Begin get note id comments {note_detail.note_id}")
+            utils.logger.info(f"[TieBaCrawler.get_comments] Begin get note id comments {note_detail.note_id}")
             await self.tieba_client.get_note_all_comments(
                 note_detail=note_detail,
                 crawl_interval=random.random(),
