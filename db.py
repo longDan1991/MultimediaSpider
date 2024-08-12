@@ -61,6 +61,7 @@ async def init_db():
     """
     utils.logger.info("[init_db] start init mediacrawler db connect object")
     await init_mediacrawler_db()
+    await init_table_schema()
     utils.logger.info("[init_db] end init mediacrawler db connect object")
 
 
@@ -85,11 +86,18 @@ async def init_table_schema():
     utils.logger.info("[init_table_schema] begin init mysql table schema ...")
     await init_mediacrawler_db()
     async_db_obj: AsyncMysqlDB = media_crawler_db_var.get()
+
+    # 检查是否已经初始化过表结构
+    check_sql = "show tables"
+    tables = await async_db_obj.query(check_sql)
+    if len(tables) > 0: # 直接用长度判断吧，只要media_crawler库中有表就认为已经初始化过了
+        utils.logger.info("[init_table_schema] mediacrawler table schema already init， skip init table schema")
+        return
+
     async with aiofiles.open("schema/tables.sql", mode="r", encoding="utf-8") as f:
         schema_sql = await f.read()
         await async_db_obj.execute(schema_sql)
         utils.logger.info("[init_table_schema] mediacrawler table schema init successful")
-        await close()
 
 
 if __name__ == '__main__':

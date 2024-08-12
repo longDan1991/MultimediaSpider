@@ -3,12 +3,15 @@ version: '3.8'
 services:
   app:
     build: .
-    container_name: mediacrawler
+    container_name: mediacrawlerpro
     ports:
       - "8000:8000"
     depends_on:
       - db
       - redis
+      - signsrv
+    volumes:
+      - ./config:/app/config
     environment:
       - RELATION_DB_USER=root
       - RELATION_DB_HOST=mysql_db
@@ -19,8 +22,26 @@ services:
       - REDIS_DB_PWD=123456
       - REDIS_DB_PORT=6379
       - REDIS_DB_NUM=0
+      - SIGN_SRV_HOST=mediacrawler_signsrv
+      - SIGN_SRV_PORT=8989
+      # 如果开启IP代理，需要配置以下环境变量，或者在config/proxy_config.py中配置
+      # - KDL_SECERT_ID
+      # - KDL_SIGNATURE
+      # - KDL_USER_NAME
+      # - KDL_USER_PWD
+
     command: python main.py --platform xhs --type search  # 添加启动命令
 
+  signsrv:
+    image: mediacrawler_signsrv:latest
+    container_name: mediacrawler_signsrv
+    ports:
+      - "8989:8989"
+    environment:
+      - APP_PORT=8989
+      - APP_HOST=0.0.0.0
+      - LOGGER_LEVEL=ERROR
+    command: python app.py # 添加启动命令
 
   db:
     image: mysql:8.0

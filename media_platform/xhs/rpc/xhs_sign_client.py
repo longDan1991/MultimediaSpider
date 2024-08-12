@@ -45,7 +45,7 @@ class XhsSignClient:
             data = response.json()
             return data
         except Exception as e:
-            raise SignError(f"请求签名服务器失败，状态码：{response.status_code}, error: {e}")
+            raise SignError(f"请求签名服务器失败, error: {e}")
 
 
 
