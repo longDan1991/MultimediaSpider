@@ -36,7 +36,7 @@ class BaiduTieBaClient(AbstractApiClient):
         self.timeout = timeout
         self._user_agent = user_agent or utils.get_user_agent()
         self._page_extractor = TieBaExtractor()
-        self._account_with_ip_pool = account_with_ip_pool
+        self.account_with_ip_pool = account_with_ip_pool
         self.account_info: Optional[AccountWithIpModel] = None
 
     @property
@@ -64,7 +64,7 @@ class BaiduTieBaClient(AbstractApiClient):
         Returns:
 
         """
-        self.account_info = await self._account_with_ip_pool.get_account_with_ip_info()
+        self.account_info = await self.account_with_ip_pool.get_account_with_ip_info()
 
     async def mark_account_invalid(self, account_with_ip: AccountWithIpModel):
         """
@@ -75,9 +75,9 @@ class BaiduTieBaClient(AbstractApiClient):
         Returns:
 
         """
-        if self._account_with_ip_pool:
-            await self._account_with_ip_pool.mark_account_invalid(account_with_ip.account)
-            await self._account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
+        if self.account_with_ip_pool:
+            await self.account_with_ip_pool.mark_account_invalid(account_with_ip.account)
+            await self.account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
 
     async def check_ip_expired(self):
         """
@@ -90,8 +90,8 @@ class BaiduTieBaClient(AbstractApiClient):
             utils.logger.info(
                 f"[BaiduTieBaClient.request] current ip {self.account_info.ip_info.ip} is expired, "
                 f"mark it invalid and try to get a new one")
-            await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
-            self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+            await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+            self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
     async def request(self, method, url, **kwargs) -> Union[Response, Dict]:
@@ -150,8 +150,8 @@ class BaiduTieBaClient(AbstractApiClient):
             utils.logger.error(f"[BaiduTieBaClient.get] 请求uri:{uri} 重试均失败了，尝试更换账号与IP再次发起重试")
             try:
                 utils.logger.info(f"[BaiduTieBaClient.get] 请求uri:{uri} 尝试更换IP再次发起重试...")
-                await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
-                self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+                await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+                self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
                 return await self.request(method="GET", url=f"{TIEBA_URL}{final_uri}", **kwargs)
 
             except RetryError:
@@ -178,8 +178,8 @@ class BaiduTieBaClient(AbstractApiClient):
             utils.logger.error(f"[BaiduTieBaClient.post] 请求uri:{uri} 重试均失败了，尝试更换账号与IP再次发起重试")
             try:
                 utils.logger.info(f"[BaiduTieBaClient.post] 请求uri:{uri} 尝试更换IP再次发起重试...")
-                await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
-                self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+                await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+                self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
                 return await self.request(method="POST", url=f"{TIEBA_URL}{uri}", data=json_str, **kwargs)
             except RetryError:
                 utils.logger.error(

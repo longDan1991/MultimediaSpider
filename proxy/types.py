@@ -21,7 +21,7 @@ class IpInfoModel(BaseModel):
     user: str = Field(title="IP代理认证的用户名")
     protocol: str = Field(default="https://", title="代理IP的协议")
     password: str = Field(title="IP代理认证用户的密码")
-    expired_time_ts: Optional[int] = Field(title="IP过期时间时间戳，单位秒")
+    expired_time_ts: int = Field(title="IP过期时间时间戳，单位秒")
 
     def format_httpx_proxy(self) -> Dict:
         """

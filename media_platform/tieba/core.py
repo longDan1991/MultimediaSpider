@@ -20,11 +20,11 @@ from .field import SearchNoteType, SearchSortType
 class TieBaCrawler(AbstractCrawler):
 
     def __init__(self) -> None:
-        self.tieba_client: Optional[BaiduTieBaClient] = None
+        self.tieba_client = BaiduTieBaClient()
 
-    async def create_tieba_client(self) -> None:
+    async def async_initialize(self) -> None:
         """
-        Create xhs client
+        Asynchronous Initialization
         Returns:
 
         """
@@ -34,12 +34,10 @@ class TieBaCrawler(AbstractCrawler):
             # 快代理：私密代理->按IP付费->专业版->IP有效时长为1分钟, 购买地址：https://www.kuaidaili.com/?ref=ldwkjqipvz6c
             proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
 
-        self.tieba_client = BaiduTieBaClient(
-            account_with_ip_pool=AccountWithIpPoolManager(
-                platform_name=constant.TIEBA_PLATFORM_NAME,
-                account_save_type=constant.EXCEL_ACCOUNT_SAVE,
-                proxy_ip_pool=proxy_ip_pool
-            )
+        self.tieba_client.account_with_ip_pool = AccountWithIpPoolManager(
+            platform_name=constant.TIEBA_PLATFORM_NAME,
+            account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+            proxy_ip_pool=proxy_ip_pool
         )
         await self.tieba_client.update_account_info()
 
@@ -49,7 +47,6 @@ class TieBaCrawler(AbstractCrawler):
         Returns:
 
         """
-        await self.create_tieba_client()
         crawler_type_var.set(config.CRAWLER_TYPE)
         if config.CRAWLER_TYPE == "search":
             # Search for notes and retrieve their comment information.

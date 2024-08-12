@@ -18,35 +18,45 @@ from .field import SearchSortType
 
 
 class XiaoHongShuCrawler(AbstractCrawler):
-
     def __init__(self) -> None:
-        self.xhs_client: Optional[XiaoHongShuClient] = None
+        self.xhs_client = XiaoHongShuClient()
 
-    async def create_xhs_client(self) -> None:
+    async def async_initialize(self):
         """
-        Create xhs client
+        Asynchronous Initialization
         Returns:
 
         """
+        utils.logger.info("[XiaoHongShuCrawler.async_initialize] Begin async initialize")
+
+        # 账号池和IP池的初始化
         proxy_ip_pool: Optional[ProxyIpPool] = None
         if config.ENABLE_IP_PROXY:
+            # xhs对代理验证还行，可以选择长时长的IP，比如30分钟一个IP
+            # 快代理：私密代理->按IP付费->专业版->IP有效时长为30分钟, 购买地址：https://www.kuaidaili.com/?ref=ldwkjqipvz6c
             proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
-        self.xhs_client = XiaoHongShuClient(
-            account_with_ip_pool=AccountWithIpPoolManager(
-                platform_name=constant.XHS_PLATFORM_NAME,
-                account_save_type=constant.EXCEL_ACCOUNT_SAVE,
-                proxy_ip_pool=proxy_ip_pool
-            )
+
+        self.xhs_client.account_with_ip_pool = AccountWithIpPoolManager(
+            platform_name=constant.XHS_PLATFORM_NAME,
+            account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+            proxy_ip_pool=proxy_ip_pool
         )
         await self.xhs_client.update_account_info()
 
+        # 设置爬虫类型
+        crawler_type_var.set(config.CRAWLER_TYPE)
+
     async def start(self) -> None:
-        await self.create_xhs_client()
+        """
+        Start the crawler
+        Returns:
+
+        """
+
         if not await self.xhs_client.pong():
             utils.logger.error("[XiaoHongShuCrawler.start] 登录态已经失效，请重新替换Cookies尝试")
             return
 
-        crawler_type_var.set(config.CRAWLER_TYPE)
         if config.CRAWLER_TYPE == "search":
             # Search for notes and retrieve their comment information.
             await self.search()
@@ -62,7 +72,11 @@ class XiaoHongShuCrawler(AbstractCrawler):
         utils.logger.info("[XiaoHongShuCrawler.start] Xhs Crawler finished ...")
 
     async def search(self) -> None:
-        """Search for notes and retrieve their comment information."""
+        """
+        Search for notes and retrieve their comment information.
+        Returns:
+
+        """
         utils.logger.info("[XiaoHongShuCrawler.search] Begin search xiaohongshu keywords")
         xhs_limit_count = 20  # xhs limit page fixed value
         if config.CRAWLER_MAX_NOTES_COUNT < xhs_limit_count:
@@ -103,7 +117,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     for note_detail in note_details:
                         if note_detail:
                             await xhs_store.update_xhs_note(note_detail)
-                            note_id_list.append(note_detail.get("note_id"))
+                            note_id_list.append(note_detail.get("note_id", ""))
                     page += 1
                     utils.logger.info(f"[XiaoHongShuCrawler.search] Note details: {note_details}")
                     await self.batch_get_note_comments(note_id_list)
@@ -123,7 +137,11 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     return
 
     async def get_creators_and_notes(self) -> None:
-        """Get creator's notes and retrieve their comment information."""
+        """
+        Get creator's information and their notes and comments
+        Returns:
+
+        """
         utils.logger.info("[XiaoHongShuCrawler.get_creators_and_notes] Begin get xiaohongshu creators")
         for user_id in config.XHS_CREATOR_ID_LIST:
             # get creator detail info from web html content
@@ -138,19 +156,24 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 callback=self.fetch_creator_notes_detail
             )
 
-            note_ids = [note_item.get("note_id") for note_item in all_notes_list]
+            note_ids = [note_item.get("note_id", "") for note_item in all_notes_list]
             await self.batch_get_note_comments(note_ids)
 
     async def fetch_creator_notes_detail(self, note_list: List[Dict]):
         """
-        Concurrently obtain the specified post list and save the data
+         Concurrently obtain the specified post list and save the data
+        Args:
+            note_list:
+
+        Returns:
+
         """
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
         task_list = [
             self.get_note_detail(
-                note_id=post_item.get("note_id"),
-                xsec_source=post_item.get("xsec_source"),
-                xsec_token=post_item.get("xsec_token"),
+                note_id=post_item.get("note_id", ""),
+                xsec_source=post_item.get("xsec_source", ""),
+                xsec_token=post_item.get("xsec_token", ""),
                 semaphore=semaphore
             )
             for post_item in note_list
@@ -162,7 +185,11 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 await xhs_store.update_xhs_note(note_detail)
 
     async def get_specified_notes(self):
-        """Get the information and comments of the specified post"""
+        """
+        Get the information and comments of the specified post
+        Returns:
+
+        """
 
         async def get_note_detail_from_html_task(note_id: str, semaphore: asyncio.Semaphore) -> Dict:
             async with semaphore:
@@ -190,13 +217,23 @@ class XiaoHongShuCrawler(AbstractCrawler):
         note_details = await asyncio.gather(*get_note_detail_task_list)
         for note_detail in note_details:
             if note_detail:
-                need_get_comment_note_ids.append(note_detail.get("note_id"))
+                need_get_comment_note_ids.append(note_detail.get("note_id", ""))
                 await xhs_store.update_xhs_note(note_detail)
         await self.batch_get_note_comments(need_get_comment_note_ids)
 
     async def get_note_detail(self, note_id: str, xsec_source: str, xsec_token: str, semaphore: asyncio.Semaphore) -> \
             Optional[Dict]:
-        """Get note detail"""
+        """
+        Get note detail
+        Args:
+            note_id:
+            xsec_source:
+            xsec_token:
+            semaphore:
+
+        Returns:
+
+        """
         async with semaphore:
             try:
                 note_detail: Dict = await self.xhs_client.get_note_by_id(note_id, xsec_source, xsec_token)
@@ -215,7 +252,14 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 return None
 
     async def batch_get_note_comments(self, note_list: List[str]):
-        """Batch get note comments"""
+        """
+        Batch get note comments
+        Args:
+            note_list:
+
+        Returns:
+
+        """
         if not config.ENABLE_GET_COMMENTS:
             utils.logger.info(f"[XiaoHongShuCrawler.batch_get_note_comments] Crawling comment mode is not enabled")
             return
@@ -230,7 +274,15 @@ class XiaoHongShuCrawler(AbstractCrawler):
         await asyncio.gather(*task_list)
 
     async def get_comments(self, note_id: str, semaphore: asyncio.Semaphore):
-        """Get note comments with keyword filtering and quantity limitation"""
+        """
+        Get note comments with keyword filtering and quantity limitation
+        Args:
+            note_id:
+            semaphore:
+
+        Returns:
+
+        """
         async with semaphore:
             utils.logger.info(f"[XiaoHongShuCrawler.get_comments] Begin get note id comments {note_id}")
             await self.xhs_client.get_note_all_comments(

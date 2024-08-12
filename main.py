@@ -1,14 +1,12 @@
 import asyncio
 import sys
+from typing import Optional, Type
 
 import cmd_arg
 import config
 import constant
 import db
 from base.base_crawler import AbstractCrawler
-from media_platform.bilibili import BilibiliCrawler
-from media_platform.douyin import DouYinCrawler
-from media_platform.kuaishou import KuaishouCrawler
 from media_platform.tieba import TieBaCrawler
 from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
@@ -17,16 +15,21 @@ from media_platform.xhs import XiaoHongShuCrawler
 class CrawlerFactory:
     CRAWLERS = {
         constant.XHS_PLATFORM_NAME: XiaoHongShuCrawler,
-        constant.DOUYIN_PLATFORM_NAME: DouYinCrawler,
-        constant.KUAISHOU_PLATFORM_NAME: KuaishouCrawler,
-        constant.BILIBILI_PLATFORM_NAME: BilibiliCrawler,
         constant.WEIBO_PLATFORM_NAME: WeiboCrawler,
         constant.TIEBA_PLATFORM_NAME: TieBaCrawler
     }
 
     @staticmethod
     def create_crawler(platform: str) -> AbstractCrawler:
-        crawler_class = CrawlerFactory.CRAWLERS.get(platform)
+        """
+        Create a crawler instance by platform
+        Args:
+            platform:
+
+        Returns:
+
+        """
+        crawler_class: Optional[Type[AbstractCrawler]] = CrawlerFactory.CRAWLERS.get(platform)
         if not crawler_class:
             raise ValueError("Invalid Media Platform Currently only supported xhs or dy or ks or bili ...")
         return crawler_class()
@@ -41,6 +44,7 @@ async def main():
         await db.init_db()
 
     crawler = CrawlerFactory.create_crawler(platform=config.PLATFORM)
+    await crawler.async_initialize()
     await crawler.start()
 
     if config.SAVE_DATA_OPTION == "db":

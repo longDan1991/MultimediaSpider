@@ -49,7 +49,7 @@ class XhsSignClient:
 
 
 
-    async def sign(self, uri: str, data: Optional[Dict] = None, cookies: str = None) -> Optional[XhsSignResponse]:
+    async def sign(self, uri: str, data: Optional[Dict] = None, cookies: str = "") -> Optional[XhsSignResponse]:
         """
         向签名服务器签名发起请求
         Args:

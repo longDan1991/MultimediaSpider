@@ -39,7 +39,7 @@ class XiaoHongShuClient(AbstractApiClient):
         self.timeout = timeout
         self._user_agent = user_agent or utils.get_user_agent()
         self._sign_client = XhsSignClient()
-        self._account_with_ip_pool = account_with_ip_pool
+        self.account_with_ip_pool = account_with_ip_pool
         self.account_info: Optional[AccountWithIpModel] = None
 
     @property
@@ -67,7 +67,7 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        self.account_info = await self._account_with_ip_pool.get_account_with_ip_info()
+        self.account_info = await self.account_with_ip_pool.get_account_with_ip_info()
 
     async def mark_account_invalid(self, account_with_ip: AccountWithIpModel):
         """
@@ -78,9 +78,9 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        if self._account_with_ip_pool:
-            await self._account_with_ip_pool.mark_account_invalid(account_with_ip.account)
-            await self._account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
+        if self.account_with_ip_pool:
+            await self.account_with_ip_pool.mark_account_invalid(account_with_ip.account)
+            await self.account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
 
     async def _pre_headers(self, url: str, data=None) -> Dict:
         """
@@ -113,8 +113,8 @@ class XiaoHongShuClient(AbstractApiClient):
             utils.logger.info(
                 f"[XiaoHongShuClient.request] current ip {self.account_info.ip_info.ip} is expired, "
                 f"mark it invalid and try to get a new one")
-            await self._account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
-            self.account_info.ip_info = await self._account_with_ip_pool.proxy_ip_pool.get_proxy()
+            await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
+            self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
     async def request(self, method, url, **kwargs) -> Union[Response, Dict]:
@@ -157,11 +157,11 @@ class XiaoHongShuClient(AbstractApiClient):
         elif data.get("success"):
             return data.get("data", data.get("success"))
         elif data.get("code") == ErrorEnum.IP_BLOCK.value.code:
-            raise IPBlockError(ErrorEnum.IP_BLOCK.value.msg, response=response)
+            raise IPBlockError(ErrorEnum.IP_BLOCK.value.msg)
         elif data.get("code") == ErrorEnum.SIGN_FAULT.value.code:
-            raise SignError(ErrorEnum.SIGN_FAULT.value.msg, response=response)
+            raise SignError(ErrorEnum.SIGN_FAULT.value.msg)
         else:
-            raise DataFetchError(data, response=response)
+            raise DataFetchError(data)
 
     async def get(self, uri: str, params=None, **kwargs) -> Union[Response, Dict]:
         """

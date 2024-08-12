@@ -65,13 +65,13 @@ class AccountWithIpModel(BaseModel):
         return f"AccountWithIpModel(account={repr(self.account)}, ip_info={self.ip_info})"
 
 if __name__ == '__main__':
-    AccountPlatfromEnum("xhs1")
     aim = AccountInfoModel(
+        id=1,
         account_name="account_name_test_1",
         cookies="account_cookies_test_1",
         status=AccountStatusEnum.NORMAL,
         invalid_timestamp=0,
-        platform_name=constant.XHS_PLATFORM_NAME
+        platform_name=AccountPlatfromEnum.XHS
     )
     print(aim)
     print(aim.model_dump())

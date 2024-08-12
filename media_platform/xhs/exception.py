@@ -1,8 +1,9 @@
 # copy from https://github.com/ReaJason/xhs/blob/master/xhs/exception.py
+# modify by Relakkes
 from enum import Enum
 from typing import NamedTuple
 
-from requests import RequestException
+from httpx import RequestError
 
 
 class ErrorTuple(NamedTuple):
@@ -18,19 +19,19 @@ class ErrorEnum(Enum):
     SESSION_EXPIRED = ErrorTuple(-100, "登录已过期")
 
 
-class DataFetchError(RequestException):
+class DataFetchError(RequestError):
     """something error when fetch"""
 
 
-class IPBlockError(RequestException):
+class IPBlockError(RequestError):
     """fetch so fast that the server block us ip"""
 
 
-class SignError(RequestException):
+class SignError(RequestError):
     """fetch error because x-s sign verror"""
 
 
-class NeedVerifyError(RequestException):
+class NeedVerifyError(RequestError):
     """fetch error because need captcha"""
 
     def __init__(self, *args, **kwargs):

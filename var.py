@@ -2,7 +2,7 @@ from asyncio.tasks import Task
 from contextvars import ContextVar
 from typing import List
 
-import aiomysql
+import aiomysql  # type: ignore
 
 from async_db import AsyncMysqlDB
 

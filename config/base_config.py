@@ -1,4 +1,6 @@
 # 基础配置
+from typing import List
+
 from constant import EXCEL_ACCOUNT_SAVE
 
 PLATFORM = "xhs"
@@ -63,27 +65,6 @@ XHS_SPECIFIED_ID_LIST = [
     # ........................
 ]
 
-# 指定抖音需要爬取的ID列表
-DY_SPECIFIED_ID_LIST = [
-    "7280854932641664319",
-    "7202432992642387233"
-    # ........................
-]
-
-# 指定快手平台需要爬取的ID列表
-KS_SPECIFIED_ID_LIST = [
-    "3xf8enb8dbj6uig",
-    "3x6zz972bchmvqe"
-]
-
-# 指定B站平台需要爬取的视频bvid列表
-BILI_SPECIFIED_ID_LIST = [
-    "BV1d54y1g7db",
-    "BV1Sz4y1U77N",
-    "BV14Q4y1n7jz",
-    # ........................
-]
-
 # 指定微博平台需要爬取的帖子列表
 WEIBO_SPECIFIED_ID_LIST = [
     "4982041758140155",
@@ -91,36 +72,18 @@ WEIBO_SPECIFIED_ID_LIST = [
 ]
 
 # 指定贴吧需要爬取的帖子列表
-TIEBA_SPECIFIED_ID_LIST = [
+TIEBA_SPECIFIED_ID_LIST: List[str] = [
 
 ]
 
 # 指定贴吧名称列表，爬取该贴吧下的帖子
-TIEBA_NAME_LIST = [
+TIEBA_NAME_LIST: List[str] = [
     # "盗墓笔记"
 ]
 
 # 指定小红书创作者ID列表
 XHS_CREATOR_ID_LIST = [
     "63e36c9a000000002703502b",
-    # ........................
-]
-
-# 指定Dy创作者ID列表(sec_id)
-DY_CREATOR_ID_LIST = [
-    "MS4wLjABAAAATJPY7LAlaa5X-c8uNdWkvz0jUGgpw4eeXIwu_8BhvqE",
-    # ........................
-]
-
-# 指定bili创作者ID列表(sec_id)
-BILI_CREATOR_ID_LIST = [
-    "20813884",
-    # ........................
-]
-
-# 指定快手创作者ID列表
-KS_CREATOR_ID_LIST = [
-    "3x4sm73aye7jq7i",
     # ........................
 ]
 

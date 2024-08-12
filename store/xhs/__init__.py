@@ -4,10 +4,7 @@
 # @Desc    :
 from typing import List
 
-import config
-
 from . import xhs_store_impl
-from .xhs_store_image import *
 from .xhs_store_impl import *
 
 
@@ -143,8 +140,3 @@ async def save_creator(user_id: str, creator: Dict):
     }
     utils.logger.info(f"[store.xhs.save_creator] creator:{local_db_item}")
     await XhsStoreFactory.create_store().store_creator(local_db_item)
-
-
-async def update_xhs_note_image(note_id, pic_content, extension_file_name):
-    await XiaoHongShuImage().store_image(
-        {"notice_id": note_id, "pic_content": pic_content, "extension_file_name": extension_file_name})

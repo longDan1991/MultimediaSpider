@@ -23,34 +23,41 @@ from .help import filter_search_result_card
 
 
 class WeiboCrawler(AbstractCrawler):
-    def __init__(self):
-        self.wb_client: Optional[WeiboClient] = None
 
-    async def create_weibo_client(self) -> None:
+    def __init__(self):
+        self.wb_client = WeiboClient()
+
+    async def async_initialize(self) -> None:
         """
-        Create xhs client
+        Asynchronous Initialization
         Returns:
 
         """
         proxy_ip_pool: Optional[ProxyIpPool] = None
         if config.ENABLE_IP_PROXY:
+            # weibo对代理验证中等，可以选择长时长的IP，比如1-5分钟一个IP
+            # 快代理：私密代理->按IP付费->专业版->IP有效时长为1-5分钟, 购买地址：https://www.kuaidaili.com/?ref=ldwkjqipvz6c
             proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
-        self.wb_client = WeiboClient(
-            account_with_ip_pool=AccountWithIpPoolManager(
-                platform_name=constant.WEIBO_PLATFORM_NAME,
-                account_save_type=constant.EXCEL_ACCOUNT_SAVE,
-                proxy_ip_pool=proxy_ip_pool
-            )
+
+        self.wb_client.account_with_ip_pool = AccountWithIpPoolManager(
+            platform_name=constant.WEIBO_PLATFORM_NAME,
+            account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+            proxy_ip_pool=proxy_ip_pool
         )
         await self.wb_client.update_account_info()
 
+        crawler_type_var.set(config.CRAWLER_TYPE)
+
     async def start(self):
-        # Create a client to interact with the xiaohongshu website.
-        await self.create_weibo_client()
+        """
+        Start the crawler
+        Returns:
+
+        """
         if not await self.wb_client.pong():
             utils.logger.error("[WeiboCrawler.start] 登录态已经失效，请重新替换Cookies尝试")
             return
-        crawler_type_var.set(config.CRAWLER_TYPE)
+
         if config.CRAWLER_TYPE == "search":
             # Search for video and retrieve their comment information.
             await self.search()
@@ -87,12 +94,12 @@ class WeiboCrawler(AbstractCrawler):
                         search_type=SearchType.DEFAULT
                     )
                     note_id_list: List[str] = []
-                    note_list = filter_search_result_card(search_res.get("cards"))
+                    note_list = filter_search_result_card(search_res.get("cards", []))
                     for note_item in note_list:
                         if note_item:
-                            mblog: Dict = note_item.get("mblog")
+                            mblog: Dict = note_item.get("mblog", {})
                             if mblog:
-                                note_id_list.append(mblog.get("id"))
+                                note_id_list.append(mblog.get("id", ""))
                                 await weibo_store.update_weibo_note(note_item)
 
                     page += 1
@@ -116,7 +123,8 @@ class WeiboCrawler(AbstractCrawler):
     async def get_specified_notes(self):
         """
         get specified notes info
-        :return:
+        Returns:
+
         """
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
         task_list = [
@@ -131,10 +139,13 @@ class WeiboCrawler(AbstractCrawler):
 
     async def get_note_info_task(self, note_id: str, semaphore: asyncio.Semaphore) -> Optional[Dict]:
         """
-        Get note detail task
-        :param note_id:
-        :param semaphore:
-        :return:
+        get note detail task
+        Args:
+            note_id:
+            semaphore:
+
+        Returns:
+
         """
         async with semaphore:
             try:
@@ -151,8 +162,11 @@ class WeiboCrawler(AbstractCrawler):
     async def batch_get_notes_comments(self, note_id_list: List[str]):
         """
         batch get notes comments
-        :param note_id_list:
-        :return:
+        Args:
+            note_id_list:
+
+        Returns:
+
         """
         if not config.ENABLE_GET_COMMENTS:
             utils.logger.info(f"[WeiboCrawler.batch_get_note_comments] Crawling comment mode is not enabled")
@@ -168,10 +182,13 @@ class WeiboCrawler(AbstractCrawler):
 
     async def get_note_comments(self, note_id: str, semaphore: asyncio.Semaphore):
         """
-        get comment for note id
-        :param note_id:
-        :param semaphore:
-        :return:
+        get note comments by note id
+        Args:
+            note_id:
+            semaphore:
+
+        Returns:
+
         """
         async with semaphore:
             try:

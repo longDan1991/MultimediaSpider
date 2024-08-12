@@ -106,7 +106,7 @@ class AccountPoolManager:
 
 class AccountWithIpPoolManager(AccountPoolManager):
     def __init__(self, platform_name: str, account_save_type: str = EXCEL_ACCOUNT_SAVE,
-                 proxy_ip_pool: ProxyIpPool = None):
+                 proxy_ip_pool: Optional[ProxyIpPool] = None):
         """
         account with ip pool manager class constructor
         if proxy_ip_pool is None, then the account pool manager will not use proxy ip
@@ -152,7 +152,7 @@ class AccountWithIpPoolManager(AccountPoolManager):
         """
         self.update_account_status(account, AccountStatusEnum.INVALID)
 
-    async def mark_ip_invalid(self, ip_info: IpInfoModel):
+    async def mark_ip_invalid(self, ip_info: Optional[IpInfoModel]):
         """
         mark ip invalid
         Args:

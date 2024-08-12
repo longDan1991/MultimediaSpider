@@ -10,7 +10,7 @@ from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
 import httpx
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw  # type: ignore
 from playwright.async_api import Cookie, Page
 
 from . import utils

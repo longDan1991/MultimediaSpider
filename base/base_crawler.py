@@ -3,6 +3,11 @@ from typing import Dict
 
 
 class AbstractCrawler(ABC):
+
+    @abstractmethod
+    async def async_initialize(self):
+        pass
+
     @abstractmethod
     async def start(self):
         pass

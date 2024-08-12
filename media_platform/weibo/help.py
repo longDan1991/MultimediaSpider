@@ -17,7 +17,7 @@ def filter_search_result_card(card_list: List[Dict]) -> List[Dict]:
         if card_item.get("card_type") == 9:
             note_list.append(card_item)
         if len(card_item.get("card_group", [])) > 0:
-            card_group = card_item.get("card_group")
+            card_group = card_item.get("card_group", [])
             for card_group_item in card_group:
                 if card_group_item.get("card_type") == 9:
                     note_list.append(card_group_item)

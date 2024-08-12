@@ -3,10 +3,10 @@ import json
 import logging
 from collections import Counter
 
-import aiofiles
-import jieba
-import matplotlib.pyplot as plt
-from wordcloud import WordCloud
+import aiofiles  # type: ignore
+import jieba  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
+from wordcloud import WordCloud  # type: ignore
 
 import config
 from tools import utils

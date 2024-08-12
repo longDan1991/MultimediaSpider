@@ -41,7 +41,7 @@ class RedisCache(AbstractCache):
         value = self._redis_client.get(key)
         if value is None:
             return None
-        return pickle.loads(value)
+        return pickle.loads(value) # type: ignore
 
     def set(self, key: str, value: Any, expire_time: int) -> None:
         """
@@ -63,13 +63,13 @@ class RedisCache(AbstractCache):
         """
         获取所有符合pattern的key
         """
-        return [key.decode() for key in self._redis_client.keys(pattern)]
+        return [key.decode() for key in self._redis_client.keys(pattern)] # type: ignore
 
     def ttl(self, key: str) -> int:
         """
         获取键的剩余生存时间
         """
-        return self._redis_client.ttl(key)
+        return self._redis_client.ttl(key) # type: ignore
 
 if __name__ == '__main__':
     redis_cache = RedisCache()

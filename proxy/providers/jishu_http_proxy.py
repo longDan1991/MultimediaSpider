@@ -14,6 +14,9 @@ from tools import utils
 
 
 class JiSuHttpProxy(ProxyProvider):
+    def mark_ip_invalid(self, ip: IpInfoModel) -> None:
+        pass
+
     def __init__(self, key: str, crypto: str, time_validity_period: int):
         """
         极速HTTP 代理IP实现

@@ -2,9 +2,9 @@
 # @Author  : relakkes@gmail.com
 # @Time    : 2024/4/6 14:21
 # @Desc    : 异步Aiomysql的增删改查封装
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
-import aiomysql
+import aiomysql  # type: ignore
 
 
 class AsyncMysqlDB:
@@ -24,7 +24,7 @@ class AsyncMysqlDB:
                 data = await cur.fetchall()
                 return data or []
 
-    async def get_first(self, sql: str, *args: Union[str, int]) -> Union[Dict[str, Any], None]:
+    async def get_first(self, sql: str, *args: Union[str, int]) -> Optional[Dict[str, Any]]:
         """
         从给定的 SQL 中查询记录，返回的是符合条件的第一个结果
         :param sql: 查询的sql
@@ -35,7 +35,9 @@ class AsyncMysqlDB:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(sql, args)
                 data = await cur.fetchone()
-                return data
+                if isinstance(data, dict):
+                    return data
+                return None
 
     async def item_to_table(self, table_name: str, item: Dict[str, Any]) -> int:
         """
@@ -53,7 +55,7 @@ class AsyncMysqlDB:
         async with self.__pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(sql, values)
-                lastrowid = cur.lastrowid
+                lastrowid: int = cur.lastrowid
                 return lastrowid
 
     async def update_table(self, table_name: str, updates: Dict[str, Any], field_where: str,
@@ -72,15 +74,15 @@ class AsyncMysqlDB:
             s = '`%s`=%%s' % k
             upsets.append(s)
             values.append(v)
-        upsets = ','.join(upsets)
+        upsets_str = ','.join(upsets)
         sql = 'UPDATE %s SET %s WHERE %s="%s"' % (
             table_name,
-            upsets,
+            upsets_str,
             field_where, value_where,
         )
         async with self.__pool.acquire() as conn:
             async with conn.cursor() as cur:
-                rows = await cur.execute(sql, values)
+                rows: int = await cur.execute(sql, values)
                 return rows
 
     async def execute(self, sql: str, *args: Union[str, int]) -> int:
@@ -92,5 +94,5 @@ class AsyncMysqlDB:
         """
         async with self.__pool.acquire() as conn:
             async with conn.cursor() as cur:
-                rows = await cur.execute(sql, args)
+                rows: int = await cur.execute(sql, args)
                 return rows
