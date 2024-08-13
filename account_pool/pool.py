@@ -64,7 +64,7 @@ class AccountPoolManager:
                 utils.logger.info(f"[AccountPoolManager.get_active_account] get active account {account}")
                 return account
 
-        raise Exception("No active account available")
+        raise Exception("[AccountPoolManager.get_active_account] no active account available")
 
     def add_account(self, account: AccountInfoModel):
         """

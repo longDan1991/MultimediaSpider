@@ -80,6 +80,7 @@ pip install -r requirements.txt
 ```
 
 ##### 3、启动签名服务
+本地安装签名服务时，需要nodejs环境，版本大于等于16以上
 ```shell
 python app.py 
 ```
@@ -98,6 +99,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 ##### 5、配置账号池+IP代理信息
+> 多账号管理基于cookies+IP配对，请按下方的配置说明进行配置，否则会导致爬虫无法正常运行。
+
 Pro版本强烈推荐`IP代理+账号池`，代码层面基于这两者做了大量的重试机制来保障爬虫的稳定性。
 配置文档见：[配置说明](config/README.md)
 
