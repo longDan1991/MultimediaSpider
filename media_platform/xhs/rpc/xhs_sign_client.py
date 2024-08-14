@@ -2,7 +2,7 @@
 import asyncio
 from typing import Any, Dict, Optional, Union
 
-import httpx
+import aiohttp
 
 from constant.xiaohongshu import XHS_SIGN_SERVER_URL
 from media_platform.xhs.exception import SignError
@@ -21,29 +21,28 @@ class XhsSignClient:
         self._endpoint = endpoint
         self._timeout = timeout
 
-    async def request(self, method, url, **kwargs) -> Union[Dict, Any]:
+
+    async def request(self, method: str, url: str, **kwargs) -> Union[Dict, Any]:
         """
         发送请求
         Args:
-            method:
-            url:
-            **kwargs:
+            method: HTTP请求方法
+            url: 请求的URL
+            **kwargs: 其他请求参数
 
         Returns:
-
+            响应数据
         """
         try:
-            async with httpx.AsyncClient(base_url=self._endpoint) as client:
-                response = await client.request(
-                    method, url, timeout=self._timeout,
-                    **kwargs
-                )
-            if response.status_code != 200:
-                utils.logger.error(f"[XhsSignClient.request]  response status code {response.status_code} response content: {response.text}")
-                raise SignError(f"请求签名服务器失败，状态码：{response.status_code}")
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self._timeout)) as session:
+                async with session.request(method, self._endpoint + url, **kwargs) as response:
+                    if response.status != 200:
+                        response_text = await response.text()
+                        utils.logger.error(f"[XhsSignClient.request] response status code {response.status} response content: {response_text}")
+                        raise SignError(f"请求签名服务器失败，状态码：{response.status}")
 
-            data = response.json()
-            return data
+                    data = await response.json()
+                    return data
         except Exception as e:
             raise SignError(f"请求签名服务器失败, error: {e}")
 

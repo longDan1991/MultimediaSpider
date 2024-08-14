@@ -9,3 +9,4 @@ redis==4.6.0
 openpyxl
 pandas
 cryptography
+aiohttp
