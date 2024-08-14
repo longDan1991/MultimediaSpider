@@ -2,7 +2,7 @@
 import os
 
 # 是否开启 IP 代理
-ENABLE_IP_PROXY = False
+ENABLE_IP_PROXY = True
 
 # 代理IP池数量
 IP_PROXY_POOL_COUNT = 2
@@ -11,7 +11,7 @@ IP_PROXY_POOL_COUNT = 2
 IP_PROXY_PROVIDER_NAME = "kuaidaili"
 
 # 快代理配置
-KDL_SECERT_ID = os.getenv("KDL_SECERT_ID", "你的快代理secert_id"),
-KDL_SIGNATURE = os.getenv("KDL_SIGNATURE", "你的快代理签名"),
-KDL_USER_NAME = os.getenv("KDL_USER_NAME", "你的快代理用户名"),
-KDL_USER_PWD = os.getenv("KDL_USER_PWD", "你的快代理密码"),
+KDL_SECERT_ID = os.getenv("KDL_SECERT_ID", "你的快代理secert_id")
+KDL_SIGNATURE = os.getenv("KDL_SIGNATURE", "你的快代理签名")
+KDL_USER_NAME = os.getenv("KDL_USER_NAME", "你的快代理用户名")
+KDL_USER_PWD = os.getenv("KDL_USER_PWD", "你的快代理密码")

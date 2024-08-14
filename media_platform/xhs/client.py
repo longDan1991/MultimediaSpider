@@ -9,17 +9,17 @@ from httpx import Response
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
-from account_pool import AccountWithIpModel
-from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractApiClient
 from constant.xiaohongshu import XHS_API_URL, XHS_INDEX_URL
-from tools import utils
+from pkg.account_pool import AccountWithIpModel
+from pkg.account_pool.pool import AccountWithIpPoolManager
+from pkg.rpc.sign_srv_client import SignServerClient, XhsSignRequest
+from pkg.tools import utils
 
 from .exception import (DataFetchError, ErrorEnum, IPBlockError,
                         NeedVerifyError, SignError)
 from .field import SearchNoteType, SearchSortType
 from .help import get_search_id
-from .rpc.xhs_sign_client import XhsSignClient
 
 
 class XiaoHongShuClient(AbstractApiClient):
@@ -38,7 +38,7 @@ class XiaoHongShuClient(AbstractApiClient):
         """
         self.timeout = timeout
         self._user_agent = user_agent or utils.get_user_agent()
-        self._sign_client = XhsSignClient()
+        self._sign_client = SignServerClient()
         self.account_with_ip_pool = account_with_ip_pool
         self.account_info: Optional[AccountWithIpModel] = None
 
@@ -82,17 +82,22 @@ class XiaoHongShuClient(AbstractApiClient):
             await self.account_with_ip_pool.mark_account_invalid(account_with_ip.account)
             await self.account_with_ip_pool.mark_ip_invalid(account_with_ip.ip_info)
 
-    async def _pre_headers(self, url: str, data=None) -> Dict:
+    async def _pre_headers(self, uri: str, data=None) -> Dict:
         """
         请求头参数签名
         Args:
-            url:
+            uri:
             data:
 
         Returns:
 
         """
-        xhs_sign_resp = await self._sign_client.sign(url, data, self._cookies)
+        sign_req: XhsSignRequest = XhsSignRequest(
+            uri=uri,
+            data=data,
+            cookies=self._cookies,
+        )
+        xhs_sign_resp = await self._sign_client.xiaohongshu_sign(sign_req)
         headers = {
             "X-S": xhs_sign_resp.data.x_s,
             "X-T": xhs_sign_resp.data.x_t,

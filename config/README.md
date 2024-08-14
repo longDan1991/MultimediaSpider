@@ -5,17 +5,36 @@
 每一个配置变量都标注的有中文注释，查看即可，这一部分跟MediaCrawler的配置是一样的
 
 
-### accounts_cookies.xlsx
-> 由于把Playwright移除了，所以登录大家自行在浏览器登录，提取cookies放到excel中即可
+### 账号池管理
+> 由于把Playwright移除了，所以登录大家自行在浏览器登录提取cookies放到`excel`或者`mysql`中。<br>
+> 这里给大家一个cookies提取的谷歌插件，非常好用。[EditThisCookie](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)
 
+#### excel存储账号信息
 excel中的每一个sheet对应一个平台的账号列表信息，打开模板文件查看即可<br>
-账号池文件，用于存储各个平台的账号信息，包括账号序号ID、账号名、登录成功的cookies以及其他（账号名和cookies必填）
-
+账号池文件，用于存储各个平台的账号信息，包括账号序号ID、账号名、登录成功的cookies以及其他（账号名和cookies必填）<br>
 ![img.png](../static/img.png) <br>
-这里给大家一个cookies提取的谷歌插件，非常好用。[EditThisCookie](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)
 
-### db_config.py
-数据库配置文件，用于配置数据库的连接信息，包括数据库类型、数据库地址、数据库端口、数据库名、数据库用户名、数据库密码
+#### mysql存储账号信息
+mysql中的每一个表对应一个平台的账号列表信息，表名为：`crawler_cookies_account`，定义在：schemas/tables.sql中 <br>
+![img.png](../static/img4.png)
+
+#### 如何设置账号池存储类型
+在`base_config.py`中设置`ACCOUNT_POOL_SAVE_TYPE`变量即可，支持`excel`和`mysql`两种存储类型，设置为`xlsx`即使用excel存储，设置为`mysql`即使用mysql存储
+
+
+### 数据库配置
+配置文件所在位置：`config/db_config.py`<br>
+
+#### mysql数据库配置
+数据存储选择mysql时，需要配置mysql数据库的连接信息，包括数据库地址、数据库端口、数据库名、数据库用户名、数据库密码
+- 强力推荐使用`mysql`存储数据，因为`mysql`的数据存储更加稳定，高效，后期可以基于元数据进行更多的数据分析和数据挖掘
+- 默认程序启动时会自动初始化数据库表结构，不需要手动创建表结构，程序会自动创建表结构
+- 如果需要手动创建表结构，可以参考schemas/tables.sql文件，里面包含了所有的表结构信息
+
+#### redis数据库配置
+redis数据库配置，用于配置redis数据库的连接信息，包括redis地址、redis端口、redis密码、redis数据库名等信息
+- redis数据库主要用于缓存IP代理池信息，用于IP代理的管理，不需要手动操作，程序会自动进行IP代理的管理
+
 
 ### proxy_config.py
 IP代理池配置文件，用于控制IP代理池信息，主要是IP代理池数量、IP代理池的类型、IP代理池提供商的账号密码等信息<br>

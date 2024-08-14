@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -8,12 +8,12 @@ from httpx import Response
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
-from account_pool import AccountWithIpModel
-from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractApiClient
 from constant.baidu_tieba import TIEBA_URL
 from model.m_baidu_tieba import TiebaComment, TiebaNote
-from tools import utils
+from pkg.account_pool import AccountWithIpModel
+from pkg.account_pool.pool import AccountWithIpPoolManager
+from pkg.tools import utils
 
 from .field import SearchNoteType, SearchSortType
 from .help import TieBaExtractor

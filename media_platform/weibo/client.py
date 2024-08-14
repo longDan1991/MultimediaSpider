@@ -7,7 +7,7 @@ import asyncio
 import copy
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from typing import Callable, Dict, List, Optional, Union, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -15,12 +15,12 @@ from httpx import Response
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
-from account_pool import AccountInfoModel, AccountWithIpModel
-from account_pool.pool import AccountWithIpPoolManager
 from constant.weibo import WEIBO_API_URL
-from proxy import IpInfoModel
-from proxy.proxy_ip_pool import ProxyIpPool
-from tools import utils
+from pkg.account_pool import AccountWithIpModel
+from pkg.account_pool.pool import AccountWithIpPoolManager
+from pkg.proxy import IpInfoModel
+from pkg.proxy.proxy_ip_pool import ProxyIpPool
+from pkg.tools import utils
 
 from .exception import DataFetchError
 from .field import SearchType

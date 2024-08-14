@@ -8,7 +8,7 @@ import asyncio
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from cache.abs_cache import AbstractCache
+from pkg.cache.abs_cache import AbstractCache
 
 
 class ExpiringLocalCache(AbstractCache):

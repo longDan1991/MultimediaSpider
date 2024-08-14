@@ -7,7 +7,7 @@
 import time
 import unittest
 
-from cache.local_cache import ExpiringLocalCache
+from pkg.cache.local_cache import ExpiringLocalCache
 
 
 class TestExpiringLocalCache(unittest.TestCase):

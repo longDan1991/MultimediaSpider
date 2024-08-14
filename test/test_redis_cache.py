@@ -7,7 +7,7 @@
 import time
 import unittest
 
-from cache.redis_cache import RedisCache
+from pkg.cache.redis_cache import RedisCache
 
 
 class TestRedisCache(unittest.TestCase):

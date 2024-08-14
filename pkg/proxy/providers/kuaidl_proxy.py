@@ -2,7 +2,6 @@
 # @Author  : relakkes@gmail.com
 # @Time    : 2024/4/5 09:43
 # @Desc    : 快代理HTTP实现，官方文档：https://www.kuaidaili.com/?ref=ldwkjqipvz6c
-import os
 import re
 from typing import Dict, List
 
@@ -10,9 +9,9 @@ import httpx
 from pydantic import BaseModel, Field
 
 import config
-from proxy import IpCache, IpInfoModel, ProxyProvider
-from proxy.types import ProviderNameEnum
-from tools import utils
+from pkg.proxy import IpCache, IpInfoModel, ProxyProvider
+from pkg.proxy.types import ProviderNameEnum
+from pkg.tools import utils
 
 
 class KuaidailiProxyModel(BaseModel):

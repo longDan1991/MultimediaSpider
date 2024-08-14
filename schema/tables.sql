@@ -398,3 +398,18 @@ CREATE TABLE tieba_comment
     KEY               `idx_tieba_comment_note_id` (`note_id`),
     KEY               `idx_tieba_comment_publish_time` (`publish_time`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='贴吧评论表';
+
+
+CREATE TABLE `crawler_cookies_account`
+(
+    `id`                bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增ID',
+    `account_name`      varchar(64) NOT NULL DEFAULT '' COMMENT '账号名称',
+    `platform_name`     varchar(64) NOT NULL DEFAULT '' COMMENT '平台名称 (xhs | dy | ks | wb | bili | tieba)',
+    `cookies`            text COMMENT '对应自媒体平台登录成功后的cookies',
+    `create_time`       datetime             DEFAULT CURRENT_TIMESTAMP COMMENT '该条记录的创建时间',
+    `update_time`       datetime             DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '该条记录的更新时间',
+    `invalid_timestamp` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '账号失效时间戳',
+    `status`            tinyint     NOT NULL DEFAULT '0' COMMENT '账号状态枚举值(0：有效，-1：无效)',
+    PRIMARY KEY (`id`),
+    KEY                 idx_crawler_cookies_account_01(`update_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='爬虫采集账号表（cookies）'

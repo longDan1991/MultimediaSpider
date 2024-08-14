@@ -33,7 +33,6 @@
 - 多账号+IP代理池的支持，让爬虫更加稳定。
 - 新增签名服务，解耦签名逻辑，让爬虫更加灵活。
 
-![img.png](static/img3.png)
 
 ## 功能列表
 | 平台   | 关键词搜索 | 指定帖子ID爬取 | 二级评论 | 指定创作者主页 | 账号池+IP代理池 |
@@ -47,9 +46,11 @@
 
 
 ## 待办事项
+- [x] 账号池管理 & 支持excel和mysql两种方式
 - [x] 小红书爬虫重构
 - [x] 微博爬虫重构
 - [x] 百度贴吧爬虫重构
+
 - [ ] B站爬虫重构
 - [ ] 抖音爬虫重构
 - [ ] 快手爬虫重构
@@ -106,7 +107,8 @@ Pro版本强烈推荐`IP代理+账号池`，代码层面基于这两者做了大
 
 ##### 6、配置数据存储方式
 强力推荐使用数据库存储数据，使用`db存储`，代码层面有判断重复机制，如果是json和csv则没有。<br>
-配置路径：在config/db_config.py中配置数据库的连接信息，包括数据库类型、数据库地址、数据库端口、数据库名、数据库用户名、数据库密码。
+详细的介绍参见：[配置说明](config/README.md)
+
 
 ##### 6、启动主项目进行爬虫
 搜索关键词以及其他的信息还是跟MediaCrawler的配置一样，在`config/base_config.py`中配置即可。
@@ -138,6 +140,101 @@ cd MediaCrawlerPro-Python
 # 构建项目
 docker-compose up --build  
 ```
+
+## 项目文件目录结构
+```
+MediaCrawlerPro-Python目录结构如下所示：
+.  
+├── base                                # 基础类目录  
+│   └── base_crawler.py                 # 抽象类定义  
+├── cmd_arg                             # 命令行参数目录
+│   └── arg.py                          # 命令行参数解析  
+├── config                              # 配置文件目录  
+│   ├── README.md                       # 配置文件说明  
+│   ├── accounts_cookies.xlsx           # excel账号池模板  
+│   ├── base_config.py                  # 基础配置  
+│   ├── db_config.py                    # 数据库配置  
+│   ├── proxy_config.py                 # 代理配置  
+│   └── sign_srv_config.py              # 签名服务配置  
+├── constant                            # 常量目录  
+│   ├── baidu_tieba.py                  # 百度贴吧常量  
+│   ├── base_constant.py                # 基础常量  
+│   ├── weibo.py                        # 微博常量  
+│   └── xiaohongshu.py                  # 小红书常量  
+├── media_platform                      # 平台爬虫实现目录  
+│   ├── tieba                           # 百度贴吧爬虫实现  
+│   │   ├── client.py                   # 贴吧客户端API  
+│   │   ├── core.py                     # 主流程逻辑  
+│   │   ├── field.py                    # 字段定义  
+│   │   └── help.py                     # 辅助函数  
+│   ├── weibo                           # 微博爬虫实现  
+│   │   ├── client.py                   # 微博客户端API   
+│   │   ├── core.py                     # 主流程逻辑  
+│   │   ├── exception.py                # 异常定义处理  
+│   │   ├── field.py                    # 字段定义  
+│   │   └── help.py                     # 辅助函数  
+│   └── xhs                             # 小红书爬虫实现  
+│       ├── client.py                   # 小红书客户端API  
+│       ├── core.py                     # 主流程逻辑  
+│       ├── exception.py                # 异常定义处理    
+│       ├── field.py                    # 字段定义  
+│       └── help.py                     # 辅助函数  
+├── model                               # 数据模型目录  
+│   ├── m_baidu_tieba.py                # 百度贴吧数据模型  
+│   ├── m_weibo.py                      # 微博数据模型  
+│   └── m_xiaohongshu.py                # 小红书数据模型  
+├── pkg                                 # 项目包目录  
+│   ├── account_pool                    # 账号池目录  
+│   │   ├── field.py                    # 字段定义  
+│   │   └── pool.py                     # 账号池实现  
+│   ├── cache                           # 缓存目录  
+│   │   ├── abs_cache.py                # 缓存抽象类  
+│   │   ├── cache_factory.py            # 缓存工厂  
+│   │   ├── local_cache.py              # 本地缓存  
+│   │   └── redis_cache.py              # redis缓存  
+│   ├── proxy                           # IP代理目录  
+│   │   ├── providers                   # IP代理提供商目录   
+│   │   ├── base_proxy.py               # IP代理抽象类  
+│   │   ├── proxy_ip_pool.py            # IP代理池实现  
+│   │   └── types.py                    # IP代理类型定义  
+│   ├── rpc                             # RPC目录  
+│   │   └── sign_srv_client             # 签名服务客户端  
+│   └── tools                           # 工具目录  
+│       ├── crawler_util.py             # 爬虫工具函数  
+│       ├── time_util.py                # 时间工具函数  
+│       └── utils.py                    # 通用工具函数  
+├── repo                                # 数据存储目录  
+│   ├── accounts_cookies                # 账号池相关的存储  
+│   │   └── cookies_manage_sql.py       # mysql账号池管理
+│   └── platform_save_data              # 平台数据存储  
+│       ├── tieba                       # 百度贴吧数据存储  
+│       ├── weibo                       # 微博数据存储  
+│       └── xhs                         # 小红书数据存储  
+├── schema                              # 数据库表结构目录  
+│   └── tables.sql                      # 数据库表结构  
+├── static                              # 静态文件目录  
+│   ├── img.png  
+│   ├── img3.png  
+│   ├── img4.png  
+│   ├── img_1.png  
+│   └── img_2.png  
+├── test                                # 单元测试目录  
+│   ├── test_expiring_local_cache.py    # 本地缓存测试  
+│   ├── test_proxy_ip_pool.py           # IP代理池测试  
+│   ├── test_redis_cache.py             # redis缓存测试  
+│   └── test_utils.py                   # 工具函数测试  
+├── Dockerfile                          # Dockerfile  
+├── LICENSE                             # 开源协议  
+├── README.md                           # 项目说明  
+├── async_db.py                         # 异步数据库  
+├── db.py                               # 数据库初始化  
+├── docker-compose.yaml                 # docker-compose文件  
+├── main.py                             # 程序入口  
+├── mypy.ini                            # mypy配置  
+├── requirements.txt                    # 依赖  
+└── var.py                              # 上下文变量定义
+```
+
 
 
 ## 免责声明

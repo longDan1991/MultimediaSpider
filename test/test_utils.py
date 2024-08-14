@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from tools import utils
+from pkg.tools import utils
 
 
 def test_convert_cookies():

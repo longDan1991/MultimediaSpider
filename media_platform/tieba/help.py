@@ -8,7 +8,7 @@ from parsel import Selector
 
 from constant import baidu_tieba as const
 from model.m_baidu_tieba import TiebaComment, TiebaNote
-from tools import utils
+from pkg.tools import utils
 
 
 class TieBaExtractor:
