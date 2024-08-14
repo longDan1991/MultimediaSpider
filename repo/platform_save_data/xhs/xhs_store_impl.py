@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# @Author  : relakkes@gmail.com
+# @Time    : 2024/1/14 16:58
+# @Desc    : 小红书存储实现类
 import asyncio
 import csv
 import json
@@ -9,7 +12,7 @@ from typing import Dict
 import aiofiles
 
 from base.base_crawler import AbstractStore
-from tools import utils
+from pkg.tools import utils
 from var import crawler_type_var
 
 
@@ -28,17 +31,17 @@ def calculate_number_of_files(file_store_path: str) -> int:
         return 1
 
 
-class TieBaCsvStoreImplement(AbstractStore):
-    csv_store_path: str = "data/tieba"
+class XhsCsvStoreImplement(AbstractStore):
+    csv_store_path: str = "data/xhs"
     file_count: int = calculate_number_of_files(csv_store_path)
 
     def make_save_file_name(self, store_type: str) -> str:
         """
-        make save file name by store type
+        make save file name by platform_save_data type
         Args:
             store_type: contents or comments
 
-        Returns: eg: data/tieba/search_comments_20240114.csv ...
+        Returns: eg: data/xhs/search_comments_20240114.csv ...
 
         """
         return f"{self.csv_store_path}/{self.file_count}_{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.csv"
@@ -96,7 +99,7 @@ class TieBaCsvStoreImplement(AbstractStore):
         await self.save_data_to_csv(save_item=creator, store_type="creator")
 
 
-class TieBaDbStoreImplement(AbstractStore):
+class XhsDbStoreImplement(AbstractStore):
     async def store_content(self, content_item: Dict):
         """
         Xiaohongshu content DB storage implementation
@@ -106,9 +109,9 @@ class TieBaDbStoreImplement(AbstractStore):
         Returns:
 
         """
-        from .tieba_store_sql import (add_new_content,
-                                      query_content_by_content_id,
-                                      update_content_by_content_id)
+        from .xhs_store_sql import (add_new_content,
+                                    query_content_by_content_id,
+                                    update_content_by_content_id)
         note_id = content_item.get("note_id")
         note_detail: Dict = await query_content_by_content_id(content_id=note_id)
         if not note_detail:
@@ -126,9 +129,9 @@ class TieBaDbStoreImplement(AbstractStore):
         Returns:
 
         """
-        from .tieba_store_sql import (add_new_comment,
-                                      query_comment_by_comment_id,
-                                      update_comment_by_comment_id)
+        from .xhs_store_sql import (add_new_comment,
+                                    query_comment_by_comment_id,
+                                    update_comment_by_comment_id)
         comment_id = comment_item.get("comment_id")
         comment_detail: Dict = await query_comment_by_comment_id(comment_id=comment_id)
         if not comment_detail:
@@ -146,9 +149,8 @@ class TieBaDbStoreImplement(AbstractStore):
         Returns:
 
         """
-        from .tieba_store_sql import (add_new_creator,
-                                      query_creator_by_user_id,
-                                      update_creator_by_user_id)
+        from .xhs_store_sql import (add_new_creator, query_creator_by_user_id,
+                                    update_creator_by_user_id)
         user_id = creator.get("user_id")
         user_detail: Dict = await query_creator_by_user_id(user_id)
         if not user_detail:
@@ -158,21 +160,21 @@ class TieBaDbStoreImplement(AbstractStore):
             await update_creator_by_user_id(user_id, creator)
 
 
-class TieBaJsonStoreImplement(AbstractStore):
-    json_store_path: str = "data/tieba/json"
+class XhsJsonStoreImplement(AbstractStore):
+    json_store_path: str = "data/xhs/json"
+
     lock = asyncio.Lock()
     file_count: int = calculate_number_of_files(json_store_path)
 
-    def make_save_file_name(self, store_type: str) -> (str, str):
+    def make_save_file_name(self, store_type: str) -> str:
         """
-        make save file name by store type
+        make save file name by platform_save_data type
         Args:
             store_type: Save type contains content and comments（contents | comments）
 
         Returns:
 
         """
-
         return f"{self.json_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.json"
 
     async def save_data_to_json(self, save_item: Dict, store_type: str):

@@ -1,0 +1,42 @@
+# -*- coding: utf-8 -*-
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
+
+
+class XhsSignResult(BaseModel):
+    x_s: str = Field(..., title="x_s", description="x_s")
+    x_t: str = Field(..., title="x_t", description="x_t")
+    x_s_common: str = Field(..., title="x_s_common", description="x_s_common")
+    x_b3_traceid: str = Field(..., title="x_t_common", description="x_b3_trace_id")
+
+
+class XhsSignRequest(BaseModel):
+    uri: str = Field(..., title="uri", description="请求的uri")
+    data: Optional[Any] = Field(None, title="data", description="请求body的数据")
+    cookies: str = Field("", title="cookies", description="cookies")
+
+
+class XhsSignResponse(BaseModel):
+    biz_code: int = 0
+    msg: str = "OK!"
+    isok: bool = True
+    data: Optional[XhsSignResult] = None
+
+
+class DouyinSignResult(BaseModel):
+    a_bogus: str = Field(..., title="a_bogus", description="a_bogus")
+
+
+class DouyinSignRequest(BaseModel):
+    uri: str = Field(..., title="request_uri", description="请求的uri")
+    query_params: str = Field(..., title="query_params", description="请求的query_params(urlencode之后的参数)")
+    user_agent: str = Field(..., title="user_agent", description="请求的user_agent")
+    cookies: str = Field(..., title="cookies", description="请求的cookies")
+
+
+class DouyinSignResponse(BaseModel):
+    biz_code: int = 0
+    msg: str = "OK!"
+    isok: bool = True
+    data: Optional[DouyinSignResult] = None

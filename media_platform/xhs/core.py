@@ -5,11 +5,11 @@ from typing import Dict, List, Optional
 
 import config
 import constant
-from account_pool.pool import AccountWithIpPoolManager
 from base.base_crawler import AbstractCrawler
-from proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
-from store import xhs as xhs_store
-from tools import utils
+from pkg.account_pool.pool import AccountWithIpPoolManager
+from pkg.proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
+from pkg.tools import utils
+from repo.platform_save_data import xhs as xhs_store
 from var import crawler_type_var
 
 from .client import XiaoHongShuClient
@@ -36,11 +36,15 @@ class XiaoHongShuCrawler(AbstractCrawler):
             # 快代理：私密代理->按IP付费->专业版->IP有效时长为30分钟, 购买地址：https://www.kuaidaili.com/?ref=ldwkjqipvz6c
             proxy_ip_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
 
-        self.xhs_client.account_with_ip_pool = AccountWithIpPoolManager(
+        # 初始化账号池
+        account_with_ip_pool = AccountWithIpPoolManager(
             platform_name=constant.XHS_PLATFORM_NAME,
-            account_save_type=constant.EXCEL_ACCOUNT_SAVE,
+            account_save_type=config.ACCOUNT_POOL_SAVE_TYPE,
             proxy_ip_pool=proxy_ip_pool
         )
+        await account_with_ip_pool.async_initialize()
+
+        self.xhs_client.account_with_ip_pool = account_with_ip_pool
         await self.xhs_client.update_account_info()
 
         # 设置爬虫类型
@@ -121,16 +125,13 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     page += 1
                     utils.logger.info(f"[XiaoHongShuCrawler.search] Note details: {note_details}")
                     await self.batch_get_note_comments(note_id_list)
-                except DataFetchError as ex:
-                    utils.logger.error(f"[XiaoHongShuCrawler.search] Search notes error: {ex}")
-                    break
 
                 except Exception as ex:
                     utils.logger.error(f"[XiaoHongShuCrawler.search] Search notes error: {ex}")
                     # 发生异常了，则打印当前爬取的关键词和页码，用于后续继续爬取
                     utils.logger.info(
                         "------------------------------------------记录当前爬取的关键词和页码------------------------------------------")
-                    for i in range(50):
+                    for i in range(10):
                         utils.logger.error(f"[XiaoHongShuCrawler.search] Current keyword: {keyword}, page: {page}")
                     utils.logger.info(
                         "------------------------------------------记录当前爬取的关键词和页码---------------------------------------------------")

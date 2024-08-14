@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author  : relakkes@gmail.com
-# @Time    : 2024/1/14 16:58
-# @Desc    : 小红书存储实现类
+# @Time    : 2024/1/14 21:35
+# @Desc    : 微博存储实现类
 import asyncio
 import csv
 import json
@@ -11,8 +11,8 @@ from typing import Dict
 
 import aiofiles
 
-from tools import utils
 from base.base_crawler import AbstractStore
+from pkg.tools import utils
 from var import crawler_type_var
 
 
@@ -31,20 +31,21 @@ def calculate_number_of_files(file_store_path: str) -> int:
         return 1
 
 
-class XhsCsvStoreImplement(AbstractStore):
-    csv_store_path: str = "data/xhs"
+class WeiboCsvStoreImplement(AbstractStore):
+    csv_store_path: str = "data/weibo"
     file_count: int = calculate_number_of_files(csv_store_path)
 
     def make_save_file_name(self, store_type: str) -> str:
         """
-        make save file name by store type
+        make save file name by platform_save_data type
         Args:
             store_type: contents or comments
 
-        Returns: eg: data/xhs/search_comments_20240114.csv ...
+        Returns: eg: data/bilibili/search_comments_20240114.csv ...
 
         """
-        return f"{self.csv_store_path}/{self.file_count}_{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.csv"
+
+        return f"{self.csv_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.csv"
 
     async def save_data_to_csv(self, save_item: Dict, store_type: str):
         """
@@ -59,7 +60,6 @@ class XhsCsvStoreImplement(AbstractStore):
         pathlib.Path(self.csv_store_path).mkdir(parents=True, exist_ok=True)
         save_file_name = self.make_save_file_name(store_type=store_type)
         async with aiofiles.open(save_file_name, mode='a+', encoding="utf-8-sig", newline="") as f:
-            f.fileno()
             writer = csv.writer(f)
             if await f.tell() == 0:
                 await writer.writerow(save_item.keys())
@@ -67,7 +67,7 @@ class XhsCsvStoreImplement(AbstractStore):
 
     async def store_content(self, content_item: Dict):
         """
-        Xiaohongshu content CSV storage implementation
+        Weibo content CSV storage implementation
         Args:
             content_item: note item dict
 
@@ -78,7 +78,7 @@ class XhsCsvStoreImplement(AbstractStore):
 
     async def store_comment(self, comment_item: Dict):
         """
-        Xiaohongshu comment CSV storage implementation
+        Weibo comment CSV storage implementation
         Args:
             comment_item: comment item dict
 
@@ -88,30 +88,24 @@ class XhsCsvStoreImplement(AbstractStore):
         await self.save_data_to_csv(save_item=comment_item, store_type="comments")
 
     async def store_creator(self, creator: Dict):
-        """
-        Xiaohongshu content CSV storage implementation
-        Args:
-            creator: creator dict
-
-        Returns:
-
-        """
-        await self.save_data_to_csv(save_item=creator, store_type="creator")
+        pass
 
 
-class XhsDbStoreImplement(AbstractStore):
+class WeiboDbStoreImplement(AbstractStore):
+
     async def store_content(self, content_item: Dict):
         """
-        Xiaohongshu content DB storage implementation
+        Weibo content DB storage implementation
         Args:
             content_item: content item dict
 
         Returns:
 
         """
-        from .xhs_store_sql import (add_new_content,
-                                    query_content_by_content_id,
-                                    update_content_by_content_id)
+
+        from .weibo_store_sql import (add_new_content,
+                                      query_content_by_content_id,
+                                      update_content_by_content_id)
         note_id = content_item.get("note_id")
         note_detail: Dict = await query_content_by_content_id(content_id=note_id)
         if not note_detail:
@@ -122,16 +116,16 @@ class XhsDbStoreImplement(AbstractStore):
 
     async def store_comment(self, comment_item: Dict):
         """
-        Xiaohongshu content DB storage implementation
+        Weibo content DB storage implementation
         Args:
             comment_item: comment item dict
 
         Returns:
 
         """
-        from .xhs_store_sql import (add_new_comment,
-                                    query_comment_by_comment_id,
-                                    update_comment_by_comment_id)
+        from .weibo_store_sql import (add_new_comment,
+                                      query_comment_by_comment_id,
+                                      update_comment_by_comment_id)
         comment_id = comment_item.get("comment_id")
         comment_detail: Dict = await query_comment_by_comment_id(comment_id=comment_id)
         if not comment_detail:
@@ -141,34 +135,17 @@ class XhsDbStoreImplement(AbstractStore):
             await update_comment_by_comment_id(comment_id, comment_item=comment_item)
 
     async def store_creator(self, creator: Dict):
-        """
-        Xiaohongshu content DB storage implementation
-        Args:
-            creator: creator dict
-
-        Returns:
-
-        """
-        from .xhs_store_sql import (add_new_creator, query_creator_by_user_id,
-                                    update_creator_by_user_id)
-        user_id = creator.get("user_id")
-        user_detail: Dict = await query_creator_by_user_id(user_id)
-        if not user_detail:
-            creator["add_ts"] = utils.get_current_timestamp()
-            await add_new_creator(creator)
-        else:
-            await update_creator_by_user_id(user_id, creator)
+        pass
 
 
-class XhsJsonStoreImplement(AbstractStore):
-    json_store_path: str = "data/xhs/json"
-
+class WeiboJsonStoreImplement(AbstractStore):
+    json_store_path: str = "data/weibo/json"
     lock = asyncio.Lock()
     file_count: int = calculate_number_of_files(json_store_path)
 
     def make_save_file_name(self, store_type: str) -> str:
         """
-        make save file name by store type
+        make save file name by platform_save_data type
         Args:
             store_type: Save type contains content and comments（contents | comments）
 
@@ -223,12 +200,4 @@ class XhsJsonStoreImplement(AbstractStore):
         await self.save_data_to_json(comment_item, "comments")
 
     async def store_creator(self, creator: Dict):
-        """
-        Xiaohongshu content JSON storage implementation
-        Args:
-            creator: creator dict
-
-        Returns:
-
-        """
-        await self.save_data_to_json(creator, "creator")
+        pass

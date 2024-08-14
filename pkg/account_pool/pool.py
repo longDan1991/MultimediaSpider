@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 
+import config
 import constant
-from account_pool.field import (AccountInfoModel, AccountStatusEnum,
-                                AccountWithIpModel)
-from constant import EXCEL_ACCOUNT_SAVE
-from proxy import IpInfoModel
-from proxy.proxy_ip_pool import ProxyIpPool
-from tools import utils
+from constant import EXCEL_ACCOUNT_SAVE, MYSQL_ACCOUNT_SAVE
+from pkg.account_pool.field import (AccountInfoModel, AccountStatusEnum,
+                                    AccountWithIpModel)
+from pkg.proxy import IpInfoModel
+from pkg.proxy.proxy_ip_pool import ProxyIpPool
+from pkg.tools import utils
+from repo.accounts_cookies import cookies_manage_sql
 
 
 class AccountPoolManager:
-    def __init__(self, platform_name: str, account_save_type: str = EXCEL_ACCOUNT_SAVE):
+    def __init__(self, platform_name: str, account_save_type: str):
         """
         account pool manager class constructor
         Args:
@@ -25,17 +27,27 @@ class AccountPoolManager:
         self._platform_name = platform_name
         self._account_save_type = account_save_type
         self._account_list: List[AccountInfoModel] = []
-        self.load_accounts_from_xlsx()
+
+    async def async_initialize(self):
+        """
+        async init
+        Returns:
+
+        """
+        if self._account_save_type == EXCEL_ACCOUNT_SAVE:
+            self.load_accounts_from_xlsx()
+        elif self._account_save_type == MYSQL_ACCOUNT_SAVE:
+            await self.load_accounts_from_mysql()
 
     def load_accounts_from_xlsx(self):
         """
         load account from xlsx
         Returns:
-            List[AccountInfoModel]: list of account info models
+
         """
         utils.logger.info(
             f"[AccountPoolManager.load_accounts_from_xlsx] load account from {self._platform_name} accounts_cookies.xlsx")
-        account_cookies_file_name = "../config/accounts_cookies.xlsx"
+        account_cookies_file_name = "../../config/accounts_cookies.xlsx"
         account_cookies_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), account_cookies_file_name)
         df = pd.read_excel(account_cookies_file_path, sheet_name=self._platform_name, engine='openpyxl')
         account_id = 1
@@ -51,6 +63,25 @@ class AccountPoolManager:
             account_id += 1
             utils.logger.info(f"[AccountPoolManager.load_accounts_from_xlsx] load account {account}")
         utils.logger.info(f"[AccountPoolManager.load_accounts_from_xlsx] all account load success")
+
+    async def load_accounts_from_mysql(self):
+        """
+        load account from mysql
+        Returns:
+
+        """
+        account_list: List[Dict] = await cookies_manage_sql.query_platform_accounts_cookies(self._platform_name)
+        for account_item in account_list:
+            account = AccountInfoModel(
+                id=account_item.get("id"),
+                account_name=account_item.get("account_name"),
+                cookies=account_item.get("cookies"),
+                status=account_item.get("status"),
+                platform_name=account_item.get("platform_name")
+            )
+            self.add_account(account)
+            utils.logger.info(f"[AccountPoolManager.load_accounts_from_mysql] load account {account}")
+        utils.logger.info(f"[AccountPoolManager.load_accounts_from_mysql] all account load success")
 
     def get_active_account(self) -> AccountInfoModel:
         """
@@ -85,27 +116,12 @@ class AccountPoolManager:
             if account_item.id == account.id:
                 account_item.status = status
                 account_item.invalid_timestamp = utils.get_current_timestamp()
+                # todo update account status in mysql
                 return
-
-    async def async_init(self):
-        """
-        async init
-        Returns:
-
-        """
-        raise NotImplementedError
-
-    async def load_accounts_from_mysql(self):
-        """
-        load account from mysql
-        Returns:
-
-        """
-        raise NotImplementedError
 
 
 class AccountWithIpPoolManager(AccountPoolManager):
-    def __init__(self, platform_name: str, account_save_type: str = EXCEL_ACCOUNT_SAVE,
+    def __init__(self, platform_name: str, account_save_type: str,
                  proxy_ip_pool: Optional[ProxyIpPool] = None):
         """
         account with ip pool manager class constructor
@@ -119,13 +135,13 @@ class AccountWithIpPoolManager(AccountPoolManager):
         super().__init__(platform_name, account_save_type)
         self.proxy_ip_pool = proxy_ip_pool
 
-    def set_proxy_ip_pool(self, proxy_ip_pool: ProxyIpPool):
+    async def async_initialize(self):
         """
-        set proxy ip pool
-        Args:
-            proxy_ip_pool:
+        async init
+        Returns:
+
         """
-        self.proxy_ip_pool = proxy_ip_pool
+        await super().async_initialize()
 
     async def get_account_with_ip_info(self) -> AccountWithIpModel:
         """
@@ -133,8 +149,8 @@ class AccountWithIpPoolManager(AccountPoolManager):
         Returns:
 
         """
-        account: AccountInfoModel = self.get_active_account()
         ip_info: Optional[IpInfoModel] = None
+        account: AccountInfoModel = self.get_active_account()
         if self.proxy_ip_pool:
             ip_info = await self.proxy_ip_pool.get_proxy()
             utils.logger.info(
@@ -167,11 +183,15 @@ class AccountWithIpPoolManager(AccountPoolManager):
 
 
 async def test_get_account_with_ip():
-    account_pool_manager = AccountWithIpPoolManager(constant.XHS_PLATFORM_NAME)
+    import db
+    await db.init_db()
+    account_pool_manager = AccountWithIpPoolManager(constant.XHS_PLATFORM_NAME,
+                                                    account_save_type=config.ACCOUNT_POOL_SAVE_TYPE)
+    await account_pool_manager.async_initialize()
     account_with_ip = await account_pool_manager.get_account_with_ip_info()
     print(account_with_ip)
     return account_with_ip
 
 
 if __name__ == '__main__':
-    asyncio.run(test_get_account_with_ip())
+    asyncio.get_event_loop().run_until_complete(test_get_account_with_ip())

@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 import constant
-from proxy.types import IpInfoModel
+from pkg.proxy.types import IpInfoModel
 
 
 class AccountStatusEnum(Enum):
