@@ -1,5 +1,6 @@
 import asyncio
 import json
+import traceback
 from typing import Callable, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
@@ -146,7 +147,11 @@ class BaiduTieBaClient(AbstractApiClient):
                          f"{urlencode(params)}")
         try:
             return await self.request(method="GET", url=f"{TIEBA_URL}{final_uri}", **kwargs)
-        except RetryError:
+        except RetryError as e:
+            # 获取原始异常
+            original_exception = e.last_attempt.exception()
+            traceback.print_exception(type(original_exception), original_exception, original_exception.__traceback__)
+
             utils.logger.error(f"[BaiduTieBaClient.get] 请求uri:{uri} 重试均失败了，尝试更换账号与IP再次发起重试")
             try:
                 utils.logger.info(f"[BaiduTieBaClient.get] 请求uri:{uri} 尝试更换IP再次发起重试...")
@@ -154,7 +159,12 @@ class BaiduTieBaClient(AbstractApiClient):
                 self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
                 return await self.request(method="GET", url=f"{TIEBA_URL}{final_uri}", **kwargs)
 
-            except RetryError:
+            except RetryError as ee:
+                # 获取原始异常
+                original_exception = ee.last_attempt.exception()
+                traceback.print_exception(type(original_exception), original_exception,
+                                          original_exception.__traceback__)
+
                 utils.logger.error(
                     f"[BaiduTieBaClient.get] 请求uri:{uri}，IP更换后还是失败，尝试更换账号与IP再次发起重试")
                 await self.mark_account_invalid(self.account_info)
@@ -174,14 +184,24 @@ class BaiduTieBaClient(AbstractApiClient):
         json_str = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
         try:
             return await self.request(method="POST", url=f"{TIEBA_URL}{uri}", data=json_str, **kwargs)
-        except RetryError:
+        except RetryError as e:
+            # 获取原始异常
+            original_exception = e.last_attempt.exception()
+            traceback.print_exception(type(original_exception), original_exception,
+                                      original_exception.__traceback__)
+
             utils.logger.error(f"[BaiduTieBaClient.post] 请求uri:{uri} 重试均失败了，尝试更换账号与IP再次发起重试")
             try:
                 utils.logger.info(f"[BaiduTieBaClient.post] 请求uri:{uri} 尝试更换IP再次发起重试...")
                 await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
                 self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
                 return await self.request(method="POST", url=f"{TIEBA_URL}{uri}", data=json_str, **kwargs)
-            except RetryError:
+            except RetryError as ee:
+                # 获取原始异常
+                original_exception = ee.last_attempt.exception()
+                traceback.print_exception(type(original_exception), original_exception,
+                                          original_exception.__traceback__)
+
                 utils.logger.error(
                     f"[WeiboClient.post]请求uri:{uri}，IP更换后还是失败，尝试更换账号与IP再次发起重试")
                 await self.mark_account_invalid(self.account_info)
