@@ -5,7 +5,9 @@ from typing import Any, Dict, Union
 import aiohttp
 
 import config
-from pkg.rpc.sign_srv_client.sign_model import (DouyinSignRequest,
+from pkg.rpc.sign_srv_client.sign_model import (BilibliSignRequest,
+                                                BilibliSignResponse,
+                                                DouyinSignRequest,
                                                 DouyinSignResponse,
                                                 XhsSignRequest,
                                                 XhsSignResponse)
@@ -85,6 +87,25 @@ class SignServerClient:
             raise Exception(f"从签名服务器:{SIGN_SERVER_URL}{sign_server_uri} 获取签名失败")
 
         sign_response = DouyinSignResponse(**res_json)
+        if sign_response.isok:
+            return sign_response
+        raise Exception(
+            f"从签名服务器:{SIGN_SERVER_URL}{sign_server_uri} 获取签名失败，原因：{sign_response.msg}, sign reponse: {sign_response}")
+
+    async def bilibili_sign(self, sign_req: BilibliSignRequest) -> BilibliSignResponse:
+        """
+        bilibili sign request to sign server
+        Args:
+            sign_req:
+
+        Returns:
+
+        """
+        sign_server_uri = "/signsrv/v1/bilibili/sign"
+        res_json = await self.request(method="POST", uri=sign_server_uri, json=sign_req.model_dump())
+        if not res_json:
+            raise Exception(f"从签名服务器:{SIGN_SERVER_URL}{sign_server_uri} 获取签名失败")
+        sign_response = BilibliSignResponse(**res_json)
         if sign_response.isok:
             return sign_response
         raise Exception(

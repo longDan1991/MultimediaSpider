@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import traceback
 from typing import Callable, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
@@ -186,7 +187,11 @@ class XiaoHongShuClient(AbstractApiClient):
             headers = await self._pre_headers(final_uri)
             res = await self.request(method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs)
             return res
-        except RetryError:
+        except RetryError as e:
+            # 获取原始异常
+            original_exception = e.last_attempt.exception()
+            traceback.print_exception(type(original_exception), original_exception, original_exception.__traceback__)
+
             utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次: {uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
             # 如果重试了5次次都还是异常了，那么尝试更换账号信息
             await self.mark_account_invalid(self.account_info)
@@ -210,7 +215,11 @@ class XiaoHongShuClient(AbstractApiClient):
             res = await self.request(method="POST", url=f"{XHS_API_URL}{uri}",
                                      data=json_str, headers=headers, **kwargs)
             return res
-        except RetryError:
+        except RetryError as e:
+            # 获取原始异常
+            original_exception = e.last_attempt.exception()
+            traceback.print_exception(type(original_exception), original_exception, original_exception.__traceback__)
+
             utils.logger.error(f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试")
             # 如果重试了5次次都还是异常了，那么尝试更换账号信息
             await self.mark_account_invalid(self.account_info)

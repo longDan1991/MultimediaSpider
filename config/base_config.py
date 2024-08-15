@@ -27,7 +27,7 @@ START_PAGE = 1
 CRAWLER_MAX_NOTES_COUNT = 200
 
 # 并发爬虫数量控制
-MAX_CONCURRENCY_NUM = 10
+MAX_CONCURRENCY_NUM = 1
 
 # 是否开启爬评论模式, 默认不开启爬评论
 ENABLE_GET_COMMENTS = True
@@ -41,6 +41,13 @@ XHS_SPECIFIED_ID_LIST = [
     "6672c38c000000001c02aeb4",
     # ........................
 ]
+
+# 指定小红书创作者ID列表
+XHS_CREATOR_ID_LIST = [
+    "63e36c9a000000002703502b",
+    # ........................
+]
+
 
 # 指定微博平台需要爬取的帖子列表
 WEIBO_SPECIFIED_ID_LIST = [
@@ -58,9 +65,17 @@ TIEBA_NAME_LIST: List[str] = [
     # "盗墓笔记"
 ]
 
-# 指定小红书创作者ID列表
-XHS_CREATOR_ID_LIST = [
-    "63e36c9a000000002703502b",
+
+# 指定bili创作者ID列表(这里是up主页面的ID)
+BILI_CREATOR_ID_LIST = [
+    "434377496",
     # ........................
 ]
 
+# 指定B站平台需要爬取的视频bvid列表
+BILI_SPECIFIED_ID_LIST = [
+    "BV1d54y1g7db",
+    "BV1Sz4y1U77N",
+    "BV14Q4y1n7jz",
+    # ........................
+]

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -40,3 +40,20 @@ class DouyinSignResponse(BaseModel):
     msg: str = "OK!"
     isok: bool = True
     data: Optional[DouyinSignResult] = None
+
+
+class BililiSignResult(BaseModel):
+    wts: str = Field(..., title="wts", description="wts")
+    w_rid: str = Field(..., title="w_rid", description="w_rid")
+
+
+class BilibliSignRequest(BaseModel):
+    req_data: Dict = Field(..., title="req_data", description="json格式的请求参数")
+    cookies: str = Field(..., title="cookis", description="登录成功的cookis")
+
+
+class BilibliSignResponse(BaseModel):
+    biz_code: int = 0
+    msg: str = "OK!"
+    isok: bool = True
+    data: Optional[BililiSignResult] = None

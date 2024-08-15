@@ -1,22 +1,24 @@
 import asyncio
 import sys
-from typing import Optional, Type
+from typing import Dict, Optional, Type
 
 import cmd_arg
 import config
 import constant
 import db
 from base.base_crawler import AbstractCrawler
+from media_platform.bilibili import BilibiliCrawler
 from media_platform.tieba import TieBaCrawler
 from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
 
 
 class CrawlerFactory:
-    CRAWLERS = {
+    CRAWLERS: Dict[str, AbstractCrawler]= {
         constant.XHS_PLATFORM_NAME: XiaoHongShuCrawler,
         constant.WEIBO_PLATFORM_NAME: WeiboCrawler,
-        constant.TIEBA_PLATFORM_NAME: TieBaCrawler
+        constant.TIEBA_PLATFORM_NAME: TieBaCrawler,
+        constant.BILIBILI_PLATFORM_NAME: BilibiliCrawler
     }
 
     @staticmethod
