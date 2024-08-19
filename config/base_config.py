@@ -5,7 +5,7 @@ from typing import List
 from constant import EXCEL_ACCOUNT_SAVE
 
 PLATFORM = "xhs"
-KEYWORDS = "python,golang,java"
+KEYWORDS = "python,golang"
 
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持小红书
 SORT_TYPE = "popularity_descending"
@@ -24,7 +24,7 @@ ACCOUNT_POOL_SAVE_TYPE = os.getenv("ACCOUNT_POOL_SAVE_TYPE", EXCEL_ACCOUNT_SAVE)
 START_PAGE = 1
 
 # 爬取视频/帖子的数量控制
-CRAWLER_MAX_NOTES_COUNT = 200
+CRAWLER_MAX_NOTES_COUNT = 40
 
 # 并发爬虫数量控制
 MAX_CONCURRENCY_NUM = 1
@@ -33,8 +33,7 @@ MAX_CONCURRENCY_NUM = 1
 ENABLE_GET_COMMENTS = True
 
 # 是否开启爬二级评论模式, 默认不开启爬二级评论
-# 老版本项目使用了 db, 则需参考 schema/tables.sql line 287 增加表字段
-ENABLE_GET_SUB_COMMENTS = True
+ENABLE_GET_SUB_COMMENTS = False
 
 # 指定小红书需要爬虫的笔记ID列表
 XHS_SPECIFIED_ID_LIST = [
@@ -47,7 +46,6 @@ XHS_CREATOR_ID_LIST = [
     "63e36c9a000000002703502b",
     # ........................
 ]
-
 
 # 指定微博平台需要爬取的帖子列表
 WEIBO_SPECIFIED_ID_LIST = [
@@ -65,7 +63,6 @@ TIEBA_NAME_LIST: List[str] = [
     # "盗墓笔记"
 ]
 
-
 # 指定bili创作者ID列表(这里是up主页面的ID)
 BILI_CREATOR_ID_LIST = [
     "434377496",
@@ -77,5 +74,18 @@ BILI_SPECIFIED_ID_LIST = [
     "BV1d54y1g7db",
     "BV1Sz4y1U77N",
     "BV14Q4y1n7jz",
+    # ........................
+]
+
+# 指定抖音需要爬取的ID列表
+DY_SPECIFIED_ID_LIST = [
+    "7280854932641664319",
+    "7202432992642387233"
+    # ........................
+]
+
+# 指定Dy创作者ID列表(sec_id)
+DY_CREATOR_ID_LIST = [
+    "MS4wLjABAAAATJPY7LAlaa5X-c8uNdWkvz0jUGgpw4eeXIwu_8BhvqE",
     # ........................
 ]
