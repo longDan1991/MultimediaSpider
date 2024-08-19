@@ -1,6 +1,7 @@
 from typing import Union, Dict
 import json
 from urllib.parse import urlencode
+from helpers import request as _request
 import httpx
 
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
@@ -20,7 +21,7 @@ XHS_API_URL = "https://edith.xiaohongshu.com"
 XHS_INDEX_URL = "https://www.xiaohongshu.com"
 XHS_SIGN_SERVER_URL = "http://localhost:8989"
 
-header = {
+headers = {
     "Content-Type": "application/json;charset=UTF-8",
     "Accept": "application/json, text/plain, */*",
     "Cookie": "",
@@ -70,32 +71,51 @@ async def request(method, url, **kwargs) -> Union[Response, Dict]:
         raise DataFetchError(data)
 
 
-async def _pre_headers(url: str, data=None) -> Dict:
-    xhs_sign_resp = await _sign_client.sign(url, data, "")
-    headers = {
-        "X-S": xhs_sign_resp.data.x_s,
-        "X-T": xhs_sign_resp.data.x_t,
-        "x-S-Common": xhs_sign_resp.data.x_s_common,
-        "X-B3-Traceid": xhs_sign_resp.data.x_b3_traceid,
+async def _xiaohongshu_sign(uri: str, cookies: str, data=None):
+    sign_server_uri = "/signsrv/v1/xhs/sign"
+    data = json.dumps({uri, data, cookies})
+    res_json = await _request(method="POST", uri=sign_server_uri, json=data)
+    if not res_json:
+        raise Exception(f"从签名服务器获取签名失败")
+
+    if res_json.isok:
+        return res_json
+    raise Exception(f"从签名服务器获取签名失败")
+
+
+async def _pre_headers(self, uri: str, cookies: str, data=None) -> Dict:
+    result = await _xiaohongshu_sign(uri, cookies, data)
+    h = {
+        "X-S": result.data.x_s,
+        "X-T": result.data.x_t,
+        "x-S-Common": result.data.x_s_common,
+        "X-B3-Traceid": result.data.x_b3_traceid,
     }
-    headers.update(self.headers)
-    return headers
+    h.update(headers)
+    return h
 
 
 async def get(uri: str, params=None, **kwargs) -> Union[Response, Dict]:
     final_uri = uri
     if isinstance(params, dict):
         final_uri = f"{uri}?" f"{urlencode(params)}"
-
     try:
-        headers = await self._pre_headers(final_uri)
+        headers = await _pre_headers(final_uri)
         res = await request(
             method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs
         )
         return res
-    except RetryError:
+    except RetryError as e:
+        # 获取原始异常
+        original_exception = e.last_attempt.exception()
+        traceback.print_exception(
+            type(original_exception),
+            original_exception,
+            original_exception.__traceback__,
+        )
+
         utils.logger.error(
-            f"[XiaoHongShuClient.get] 重试了5次: {uri} 请求，均失败了，尝试更换账号与IP再次发起重试"
+            f"[XiaoHongShuClient.post] 重试了5次: {uri} 请求，均失败了，尝试更换账号与IP再次发起重试"
         )
         # 如果重试了5次次都还是异常了，那么尝试更换账号信息
         await self.mark_account_invalid(self.account_info)

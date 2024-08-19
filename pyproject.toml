@@ -1,0 +1,32 @@
+[project]
+name = "MultimediaSpider"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "wxlong", email = "weixiaolong@youxigongchang.com"},
+]
+dependencies = [
+    "aiofiles==24.1.0",
+    "aiomysql==0.2.0",
+    "parsel==1.6.0",
+    "Pillow==10.4.0",
+    "httpx==0.24.0",
+    "tenacity==8.2.2",
+    "pydantic==2.5.2",
+    "redis==4.6.0",
+    "openpyxl",
+    "pandas",
+    "cryptography",
+    "aiohttp",
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
