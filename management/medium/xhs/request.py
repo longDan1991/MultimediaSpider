@@ -8,6 +8,7 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 from httpx import Response
 from management.proxies.proxy import get_proxy
 from tools import utils
+import traceback
 
 from ....media_platform.xhs.exception import (
     DataFetchError,
@@ -83,7 +84,7 @@ async def _xiaohongshu_sign(uri: str, cookies: str, data=None):
     raise Exception(f"从签名服务器获取签名失败")
 
 
-async def _pre_headers(self, uri: str, cookies: str, data=None) -> Dict:
+async def _pre_headers( uri: str, cookies: str, data=None) -> Dict:
     result = await _xiaohongshu_sign(uri, cookies, data)
     h = {
         "X-S": result.data.x_s,
@@ -106,7 +107,6 @@ async def get(uri: str, params=None, **kwargs) -> Union[Response, Dict]:
         )
         return res
     except RetryError as e:
-        # 获取原始异常
         original_exception = e.last_attempt.exception()
         traceback.print_exception(
             type(original_exception),
@@ -115,9 +115,8 @@ async def get(uri: str, params=None, **kwargs) -> Union[Response, Dict]:
         )
 
         utils.logger.error(
-            f"[XiaoHongShuClient.post] 重试了5次: {uri} 请求，均失败了，尝试更换账号与IP再次发起重试"
+            f"get重试失败: {uri} 请尝试更换账号与IP再次发起重试"
         )
-        # 如果重试了5次次都还是异常了，那么尝试更换账号信息
         await self.mark_account_invalid(self.account_info)
         await self.update_account_info()
         headers = await self._pre_headers(final_uri)

@@ -18,6 +18,7 @@ dependencies = [
     "pandas",
     "cryptography",
     "aiohttp",
+    "logto>=0.2.1",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

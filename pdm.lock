@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:d16fc4b530b6211a918d570bcece2f90f5d0b82ea4385a97b2d6fbb73c3895e1"
+content_hash = "sha256:902d8ba5d95f4e365fdd96e2157e8f3ba3f8de0d007168ea8089336c1cf11732"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -483,6 +483,22 @@ groups = ["default"]
 files = [
     {file = "idna-3.7-py3-none-any.whl", hash = "sha256:82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0"},
     {file = "idna-3.7.tar.gz", hash = "sha256:028ff3aadf0609c1fd278d8ea3089299412a7a8b9bd005dd08b9f8285bcb5cfc"},
+]
+
+[[package]]
+name = "logto"
+version = "0.2.1"
+requires_python = "<4.0,>=3.8"
+summary = "Logto Python SDK."
+groups = ["default"]
+dependencies = [
+    "aiohttp<4.0.0,>=3.8.5",
+    "pydantic<3.0.0,>=2.1.1",
+    "pyjwt[crypto]<3.0.0,>=2.8.0",
+]
+files = [
+    {file = "logto-0.2.1-py3-none-any.whl", hash = "sha256:04288b9c9444464e32f838226b9220fda9e212de96589d5eb2d27d969cb6be7f"},
+    {file = "logto-0.2.1.tar.gz", hash = "sha256:33b2cc69fa254b5a01f31c1bc5f7bcf953f96d7259fa7b597f7dfc1f213c6f04"},
 ]
 
 [[package]]
@@ -980,6 +996,33 @@ files = [
     {file = "pydantic_core-2.14.5-pp39-pypy39_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:f5e412d717366e0677ef767eac93566582518fe8be923361a5c204c1a62eaafe"},
     {file = "pydantic_core-2.14.5-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:513b07e99c0a267b1d954243845d8a833758a6726a3b5d8948306e3fe14675e3"},
     {file = "pydantic_core-2.14.5.tar.gz", hash = "sha256:6d30226dfc816dd0fdf120cae611dd2215117e4f9b124af8c60ab9093b6e8e71"},
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.9.0"
+requires_python = ">=3.8"
+summary = "JSON Web Token implementation in Python"
+groups = ["default"]
+files = [
+    {file = "PyJWT-2.9.0-py3-none-any.whl", hash = "sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850"},
+    {file = "pyjwt-2.9.0.tar.gz", hash = "sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c"},
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.9.0"
+extras = ["crypto"]
+requires_python = ">=3.8"
+summary = "JSON Web Token implementation in Python"
+groups = ["default"]
+dependencies = [
+    "cryptography>=3.4.0",
+    "pyjwt==2.9.0",
+]
+files = [
+    {file = "PyJWT-2.9.0-py3-none-any.whl", hash = "sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850"},
+    {file = "pyjwt-2.9.0.tar.gz", hash = "sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c"},
 ]
 
 [[package]]
