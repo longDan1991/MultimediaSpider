@@ -6,14 +6,30 @@ class AbstractCrawler(ABC):
 
     @abstractmethod
     async def async_initialize(self):
-        pass
+        """
+        Asynchronous Initialization
+        Returns:
+
+        """
+        raise NotImplementedError
+
 
     @abstractmethod
     async def start(self):
+        """
+        Start the crawler
+        Returns:
+
+        """
         pass
 
     @abstractmethod
     async def search(self):
+        """
+        Search the content
+        Returns:
+
+        """
         pass
 
 

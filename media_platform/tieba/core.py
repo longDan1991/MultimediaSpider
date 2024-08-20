@@ -219,7 +219,7 @@ class TieBaCrawler(AbstractCrawler):
 
         """
         async with semaphore:
-            utils.logger.info(f"[TieBaCrawler.get_comments] Begin get note id comments {note_detail.note_id}")
+            utils.logger.info(f"[TieBaCrawler.get_comments_async_task] Begin get note id comments {note_detail.note_id}")
             await self.tieba_client.get_note_all_comments(
                 note_detail=note_detail,
                 crawl_interval=random.random(),

@@ -12,7 +12,7 @@ from media_platform.douyin import DouYinCrawler
 from media_platform.tieba import TieBaCrawler
 from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
-
+from media_platform.kuaishou import KuaiShouCrawler
 
 class CrawlerFactory:
     CRAWLERS: Dict[str, AbstractCrawler]= {
@@ -20,7 +20,8 @@ class CrawlerFactory:
         constant.WEIBO_PLATFORM_NAME: WeiboCrawler,
         constant.TIEBA_PLATFORM_NAME: TieBaCrawler,
         constant.BILIBILI_PLATFORM_NAME: BilibiliCrawler,
-        constant.DOUYIN_PLATFORM_NAME: DouYinCrawler
+        constant.DOUYIN_PLATFORM_NAME: DouYinCrawler,
+        constant.KUAISHOU_PLATFORM_NAME: KuaiShouCrawler
     }
 
     @staticmethod

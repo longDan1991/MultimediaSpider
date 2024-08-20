@@ -274,7 +274,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
             task_list.append(task)
         await asyncio.gather(*task_list)
 
-    async def get_comments(self, note_id: str, semaphore: asyncio.Semaphore):
+    async def get_comments_async_task(self, note_id: str, semaphore: asyncio.Semaphore):
         """
         Get note comments with keyword filtering and quantity limitation
         Args:
@@ -285,7 +285,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
 
         """
         async with semaphore:
-            utils.logger.info(f"[XiaoHongShuCrawler.get_comments] Begin get note id comments {note_id}")
+            utils.logger.info(f"[XiaoHongShuCrawler.get_comments_async_task] Begin get note id comments {note_id}")
             await self.xhs_client.get_note_all_comments(
                 note_id=note_id,
                 crawl_interval=random.random(),

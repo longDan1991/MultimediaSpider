@@ -203,7 +203,7 @@ class BaiduTieBaClient(AbstractApiClient):
                                           original_exception.__traceback__)
 
                 utils.logger.error(
-                    f"[WeiboClient.post]请求uri:{uri}，IP更换后还是失败，尝试更换账号与IP再次发起重试")
+                    f"[BaiduTieBaClient.post]请求uri:{uri}，IP更换后还是失败，尝试更换账号与IP再次发起重试")
                 await self.mark_account_invalid(self.account_info)
                 await self.update_account_info()
                 return await self.request(method="POST", url=f"{TIEBA_URL}{uri}", data=json_str, **kwargs)

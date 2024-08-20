@@ -152,7 +152,7 @@ class BilibiliCrawler(AbstractCrawler):
             task_list.append(task)
         await asyncio.gather(*task_list)
 
-    async def get_comments(self, video_id: str, semaphore: asyncio.Semaphore):
+    async def get_comments_async_task(self, video_id: str, semaphore: asyncio.Semaphore):
         """
         get comment for video id
         :param video_id:
@@ -162,7 +162,7 @@ class BilibiliCrawler(AbstractCrawler):
         async with semaphore:
             try:
                 utils.logger.info(
-                    f"[BilibiliCrawler.get_comments] begin get video_id: {video_id} comments ...")
+                    f"[BilibiliCrawler.get_comments_async_task] begin get video_id: {video_id} comments ...")
                 await self.bili_client.get_video_all_comments(
                     video_id=video_id,
                     crawl_interval=random.random(),
@@ -170,9 +170,9 @@ class BilibiliCrawler(AbstractCrawler):
                 )
             except DataFetchError as ex:
                 utils.logger.error(
-                    f"[BilibiliCrawler.get_comments] get video_id: {video_id} comment error: {ex}")
+                    f"[BilibiliCrawler.get_comments_async_task] get video_id: {video_id} comment error: {ex}")
             except Exception as e:
-                utils.logger.error(f"[BilibiliCrawler.get_comments] may be been blocked, err:{e}")
+                utils.logger.error(f"[BilibiliCrawler.get_comments_async_task] may be been blocked, err:{e}")
 
     async def get_creator_videos(self):
         """

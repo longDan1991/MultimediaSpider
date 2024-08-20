@@ -191,7 +191,7 @@ class DouYinCrawler(AbstractCrawler):
         if len(task_list) > 0:
             await asyncio.wait(task_list)
 
-    async def get_comments(self, aweme_id: str, semaphore: asyncio.Semaphore) -> None:
+    async def get_comments_async_task(self, aweme_id: str, semaphore: asyncio.Semaphore) -> None:
         async with semaphore:
             try:
                 # 将关键词列表传递给 get_aweme_all_comments 方法
@@ -201,9 +201,9 @@ class DouYinCrawler(AbstractCrawler):
                     callback=douyin_store.batch_update_dy_aweme_comments
                 )
                 utils.logger.info(
-                    f"[DouYinCrawler.get_comments] aweme_id: {aweme_id} comments have all been obtained and filtered ...")
+                    f"[DouYinCrawler.get_comments_async_task] aweme_id: {aweme_id} comments have all been obtained and filtered ...")
             except DataFetchError as e:
-                utils.logger.error(f"[DouYinCrawler.get_comments] aweme_id: {aweme_id} get comments failed, error: {e}")
+                utils.logger.error(f"[DouYinCrawler.get_comments_async_task] aweme_id: {aweme_id} get comments failed, error: {e}")
 
     async def get_creators_and_videos(self) -> None:
         """
