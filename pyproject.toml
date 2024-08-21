@@ -19,6 +19,7 @@ dependencies = [
     "cryptography",
     "aiohttp",
     "logto>=0.2.1",
+    "sanic>=24.6.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
