@@ -21,7 +21,7 @@ async def sign_in(request):
     # Get the sign-in URL and redirect the user to it
     return redirect(
         await client.signIn(
-            redirectUri="http://localhost:8000/auth/callback",
+            redirectUri="http://localhost:8082/api/auth/callback",
         )
     )
 

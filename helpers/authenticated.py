@@ -1,6 +1,6 @@
 from functools import wraps
 from logto import LogtoClient, LogtoConfig
-from sanic import response, redirect
+from sanic import json, response, redirect
 
 client = LogtoClient(
     LogtoConfig(
@@ -15,12 +15,12 @@ def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
     def decorator(func):
         @wraps(func)
         async def wrapper(request, *args, **kwargs):
+            print("client.isAuthenticated()", client.isAuthenticated())
             if client.isAuthenticated() is False:
                 if shouldRedirect:
                     return redirect("/sign-in")
-                return response.json({"error": "Not authenticated"}, status=401)
+                return json({"error": "Not authenticated"}, status=401)
 
-            # 使用 Sanic 上下文存储用户信息
             request.ctx.user = (
                 await client.fetchUserInfo()
                 if fetchUserInfo

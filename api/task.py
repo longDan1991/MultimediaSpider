@@ -1,13 +1,14 @@
-from urllib import response
-from sanic import Blueprint, redirect
+from sanic import Blueprint, json, redirect
 from helpers.authenticated import authenticated
+from helpers.nocodb import get_tasks
 
 task_bp = Blueprint("task", url_prefix="/task")
 
 
-@task_bp.route("/setup")
-@authenticated(shouldRedirect=True, fetchUserInfo=True)
-async def protected_route(request):
+@task_bp.route("/")
+@authenticated()
+async def get_task_list(request):
+    result = await get_tasks({})
 
-    user = request.ctx.user
-    return response.json({"message": "This route is protected", "user": user})
+    print("===get_task_list=====", result)
+    return json({"task": result})
