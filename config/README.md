@@ -7,10 +7,10 @@
 
 ### 账号池管理
 > 由于把Playwright移除了，所以登录大家自行在浏览器登录提取cookies放到`excel`或者`mysql`中。<br>
-> 这里给大家一个cookies提取的谷歌插件，非常好用。[EditThisCookie](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm) <br>
+> 这里给大家一个cookies提取的谷歌插件，非常好用。[Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm) <br>
 > 推荐使用Chrome浏览器，插件安装好之后，登录账号，点击插件，复制cookies即可。
 
-EditThisCookie 工具提取示意图：
+Cookie-Editor 工具提取示意图：
 <br>
 
 ![img.png](../static/img5.png)
