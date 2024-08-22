@@ -153,7 +153,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
             # Get all note information of the creator
             all_notes_list = await self.xhs_client.get_all_notes_by_creator(
                 user_id=user_id,
-                crawl_interval=random.random(),
+                crawl_interval=0,
                 callback=self.fetch_creator_notes_detail
             )
 
@@ -270,7 +270,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
         task_list: List[Task] = []
         for note_id in note_list:
-            task = asyncio.create_task(self.get_comments(note_id, semaphore), name=note_id)
+            task = asyncio.create_task(self.get_comments_async_task(note_id, semaphore), name=note_id)
             task_list.append(task)
         await asyncio.gather(*task_list)
 
@@ -288,6 +288,6 @@ class XiaoHongShuCrawler(AbstractCrawler):
             utils.logger.info(f"[XiaoHongShuCrawler.get_comments_async_task] Begin get note id comments {note_id}")
             await self.xhs_client.get_note_all_comments(
                 note_id=note_id,
-                crawl_interval=random.random(),
+                crawl_interval=0, # 暂时不加延迟，访问签名服务有一定的延时
                 callback=xhs_store.batch_update_xhs_note_comments
             )
