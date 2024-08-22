@@ -163,7 +163,7 @@ class KuaishouJsonStoreImplement(AbstractStore):
 
         """
         pathlib.Path(self.json_store_path).mkdir(parents=True, exist_ok=True)
-        save_file_name, words_file_name_prefix = self.make_save_file_name(store_type=store_type)
+        save_file_name = self.make_save_file_name(store_type=store_type)
         save_data = []
 
         async with self.lock:
