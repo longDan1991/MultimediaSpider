@@ -56,6 +56,7 @@
 
 
 ## Pro版本使用教程
+> 在安装部署之前，请务必 [查看Pro的一些注意事项汇总](https://github.com/MediaCrawlerPro/MediaCrawlerPro-Python/issues/8)
 
 ### 本地部署
 

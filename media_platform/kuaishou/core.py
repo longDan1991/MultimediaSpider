@@ -10,7 +10,7 @@ from pkg.account_pool.pool import AccountWithIpPoolManager
 from pkg.proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
 from pkg.tools import utils
 from repo.platform_save_data import kuaishou as kuaishou_store
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 
 from .client import KuaiShouApiClient
 from .exception import DataFetchError
@@ -85,6 +85,7 @@ class KuaiShouCrawler(AbstractCrawler):
             config.CRAWLER_MAX_NOTES_COUNT = ks_limit_count
         start_page = config.START_PAGE
         for keyword in config.KEYWORDS.split(","):
+            source_keyword_var.set(keyword)
             utils.logger.info(f"[KuaiShouCrawler.search] Current search keyword: {keyword}")
             page = 1
             while (page - start_page + 1) * ks_limit_count <= config.CRAWLER_MAX_NOTES_COUNT:

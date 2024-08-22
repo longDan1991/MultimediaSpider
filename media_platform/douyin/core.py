@@ -11,7 +11,7 @@ from pkg.account_pool.pool import AccountWithIpPoolManager
 from pkg.proxy.proxy_ip_pool import ProxyIpPool, create_ip_pool
 from pkg.tools import utils
 from repo.platform_save_data import douyin as douyin_store
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 
 from .client import DouYinApiClient
 from .exception import DataFetchError
@@ -88,6 +88,7 @@ class DouYinCrawler(AbstractCrawler):
             config.CRAWLER_MAX_NOTES_COUNT = dy_limit_count
         start_page = config.START_PAGE
         for keyword in config.KEYWORDS.split(","):
+            source_keyword_var.set(keyword)
             utils.logger.info(f"[DouYinCrawler.search] Current keyword: {keyword}")
             page = 1
             dy_search_id = ""
