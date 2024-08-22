@@ -186,7 +186,7 @@ class DouYinCrawler(AbstractCrawler):
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
         for aweme_id in aweme_list:
             task = asyncio.create_task(
-                self.get_comments(aweme_id, semaphore), name=aweme_id)
+                self.get_comments_async_task(aweme_id, semaphore), name=aweme_id)
             task_list.append(task)
         if len(task_list) > 0:
             await asyncio.wait(task_list)
