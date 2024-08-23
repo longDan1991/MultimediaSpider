@@ -88,7 +88,15 @@ class WeiboCsvStoreImplement(AbstractStore):
         await self.save_data_to_csv(save_item=comment_item, store_type="comments")
 
     async def store_creator(self, creator: Dict):
-        pass
+        """
+        Weibo creator CSV storage implementation
+        Args:
+            creator:
+
+        Returns:
+
+        """
+        await self.save_data_to_csv(save_item=creator, store_type="creator")
 
 
 class WeiboDbStoreImplement(AbstractStore):
@@ -135,7 +143,25 @@ class WeiboDbStoreImplement(AbstractStore):
             await update_comment_by_comment_id(comment_id, comment_item=comment_item)
 
     async def store_creator(self, creator: Dict):
-        pass
+        """
+        Weibo creator DB storage implementation
+        Args:
+            creator:
+
+        Returns:
+
+        """
+        from .weibo_store_sql import (add_new_creator,
+                                      query_creator_by_user_id,
+                                      update_creator_by_user_id)
+        user_id = creator.get("user_id")
+        user_detail: Dict = await query_creator_by_user_id(user_id)
+        if not user_detail:
+            creator["add_ts"] = utils.get_current_timestamp()
+            await add_new_creator(creator)
+        else:
+            await update_creator_by_user_id(user_id, creator)
+
 
 
 class WeiboJsonStoreImplement(AbstractStore):
@@ -200,4 +226,12 @@ class WeiboJsonStoreImplement(AbstractStore):
         await self.save_data_to_json(comment_item, "comments")
 
     async def store_creator(self, creator: Dict):
-        pass
+        """
+        creator JSON storage implementation
+        Args:
+            creator:
+
+        Returns:
+
+        """
+        await self.save_data_to_json(creator, "creator")

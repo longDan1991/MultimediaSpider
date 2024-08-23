@@ -28,6 +28,13 @@ class WeibostoreFactory:
         return store_class()
 
 
+async def batch_update_weibo_notes(note_list: List[Dict]):
+    if not note_list:
+        return
+    for note_item in note_list:
+        await update_weibo_note(note_item)
+
+
 async def update_weibo_note(note_item: Dict):
     mblog: Dict = note_item.get("mblog")
     user_info: Dict = mblog.get("user")
@@ -95,3 +102,20 @@ async def update_weibo_note_comment(note_id: str, comment_item: Dict):
     utils.logger.info(
         f"[store.weibo.update_weibo_note_comment] Weibo note comment: {comment_id}, content: {save_comment_item.get('content', '')[:24]} ...")
     await WeibostoreFactory.create_store().store_comment(comment_item=save_comment_item)
+
+
+async def save_creator(user_id: str, user_info: Dict):
+    local_db_item = {
+        'user_id': user_id,
+        'nickname': user_info.get('screen_name'),
+        'gender': '女' if user_info.get('gender') == "f" else '男',
+        'avatar': user_info.get('avatar_hd'),
+        'desc': user_info.get('description'),
+        'ip_location': user_info.get("source", "").replace("来自", ""),
+        'follows': user_info.get('follow_count', ''),
+        'fans': user_info.get('followers_count', ''),
+        'tag_list': '',
+        "last_modify_ts": utils.get_current_timestamp(),
+    }
+    utils.logger.info(f"[store.weibo.save_creator] creator:{local_db_item}")
+    await WeibostoreFactory.create_store().store_creator(local_db_item)

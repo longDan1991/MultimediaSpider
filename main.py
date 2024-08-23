@@ -9,10 +9,11 @@ import db
 from base.base_crawler import AbstractCrawler
 from media_platform.bilibili import BilibiliCrawler
 from media_platform.douyin import DouYinCrawler
+from media_platform.kuaishou import KuaiShouCrawler
 from media_platform.tieba import TieBaCrawler
 from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
-from media_platform.kuaishou import KuaiShouCrawler
+
 
 class CrawlerFactory:
     CRAWLERS: Dict[str, AbstractCrawler]= {
