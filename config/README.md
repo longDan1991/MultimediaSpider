@@ -23,6 +23,8 @@ excel中的每一个sheet对应一个平台的账号列表信息，打开模板�
 账号池文件，用于存储各个平台的账号信息，包括账号序号ID、账号名、登录成功的cookies以及其他（账号名和cookies必填）<br>
 ![img.png](../static/img.png) <br>
 
+备注：如果是excel存储账号信息，请注意每个sheet代表不同平台的账号信息，sheet name就对应着平台平台名
+
 #### mysql存储账号信息
 mysql中的每一个表对应一个平台的账号列表信息，表名为：`crawler_cookies_account`，定义在：schemas/tables.sql中 <br>
 ![img.png](../static/img4.png)
