@@ -2,7 +2,7 @@
 from typing import List
 
 import config
-from model.m_baidu_tieba import TiebaComment, TiebaNote
+from model.m_baidu_tieba import TiebaComment, TiebaCreator, TiebaNote
 from var import source_keyword_var
 
 from . import tieba_store_impl
@@ -24,6 +24,20 @@ class TieBaStoreFactory:
                 "[TieBaStoreFactory.create_store] Invalid save option only supported csv or db or json ...")
         return store_class()
 
+
+async def batch_update_tieba_notes(note_list: List[TiebaNote]):
+    """
+    Batch update tieba notes
+    Args:
+        note_list:
+
+    Returns:
+
+    """
+    if not note_list:
+        return
+    for note_item in note_list:
+        await update_tieba_note(note_item)
 
 async def update_tieba_note(note_item: TiebaNote):
     """
@@ -72,3 +86,18 @@ async def update_tieba_note_comment(note_id: str, comment_item: TiebaComment):
     save_comment_item.update({"last_modify_ts": utils.get_current_timestamp()})
     utils.logger.info(f"[store.tieba.update_tieba_note_comment] tieba note id: {note_id} comment:{save_comment_item}")
     await TieBaStoreFactory.create_store().store_comment(save_comment_item)
+
+
+async def save_creator(user_info: TiebaCreator):
+    """
+    Save creator information to local
+    Args:
+        user_info:
+
+    Returns:
+
+    """
+    local_db_item = user_info.model_dump()
+    local_db_item["last_modify_ts"] = utils.get_current_timestamp()
+    utils.logger.info(f"[store.tieba.save_creator] creator:{local_db_item}")
+    await TieBaStoreFactory.create_store().store_creator(local_db_item)

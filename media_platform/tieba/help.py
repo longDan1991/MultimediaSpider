@@ -3,11 +3,13 @@ import html
 import json
 import re
 from typing import Dict, List, Tuple
+from urllib.parse import parse_qs, unquote
 
 from parsel import Selector
 
 from constant import baidu_tieba as const
-from model.m_baidu_tieba import TiebaComment, TiebaNote
+from constant.baidu_tieba import GENDER_FEMALE, GENDER_MALE
+from model.m_baidu_tieba import TiebaComment, TiebaCreator, TiebaNote
 from pkg.tools import utils
 
 
@@ -199,8 +201,40 @@ class TieBaExtractor:
 
         return comments
 
-    @staticmethod
-    def extract_ip_and_pub_time(html_content: str) -> Tuple[str, str]:
+    def extract_creator_info(self, html_content: str) -> TiebaCreator:
+        """
+        提取贴吧创作者信息
+        Args:
+            html_content:
+
+        Returns:
+
+        """
+        selector = Selector(text=html_content)
+        user_link_selector = selector.xpath("//p[@class='space']/a")
+        user_link: str = user_link_selector.xpath("./@href").get(default='')
+        user_link_params: Dict = parse_qs(unquote(user_link.split("?")[-1]))
+        user_name = user_link_params.get("un")[0] if user_link_params.get("un") else ""
+        user_id = user_link_params.get("id")[0] if user_link_params.get("id") else ""
+        userinfo_userdata_selector = selector.xpath("//div[@class='userinfo_userdata']")
+        follow_fans_selector = selector.xpath("//span[@class='concern_num']")
+        follows, fans = 0, 0
+        if len(follow_fans_selector) == 2:
+            follows, fans = self.extract_follow_and_fans(follow_fans_selector)
+        user_content = userinfo_userdata_selector.get(default='')
+        return TiebaCreator(user_id=user_id, user_name=user_name,
+                            nickname=selector.xpath(".//span[@class='userinfo_username ']/text()").get(
+                                default='').strip(),
+                            avatar=selector.xpath(".//div[@class='userinfo_left_head']//img/@src").get(
+                                default='').strip(),
+                            gender=self.extract_gender(user_content),
+                            ip_location=self.extract_ip(user_content),
+                            follows=follows,
+                            fans=fans,
+                            registration_duration=self.extract_registration_duration(user_content)
+                            )
+
+    def extract_ip_and_pub_time(self, html_content: str) -> Tuple[str, str]:
         """
         提取IP位置和发布时间
         Args:
@@ -209,13 +243,70 @@ class TieBaExtractor:
         Returns:
 
         """
-        pattern_ip = re.compile(r'IP属地:(\S+)</span>')
         pattern_pub_time = re.compile(r'<span class="tail-info">(\d{4}-\d{2}-\d{2} \d{2}:\d{2})</span>')
-        ip_match = pattern_ip.search(html_content)
         time_match = pattern_pub_time.search(html_content)
-        ip = ip_match.group(1) if ip_match else ""
         pub_time = time_match.group(1) if time_match else ""
-        return ip, pub_time
+        return self.extract_ip(html_content), pub_time
+
+    @staticmethod
+    def extract_ip(html_content: str) -> str:
+        """
+        提取IP
+        Args:
+            html_content:
+
+        Returns:
+
+        """
+        pattern_ip = re.compile(r'IP属地:(\S+)</span>')
+        ip_match = pattern_ip.search(html_content)
+        ip = ip_match.group(1) if ip_match else ""
+        return ip
+
+    @staticmethod
+    def extract_gender(html_content: str) -> str:
+        """
+        提取性别
+        Args:
+            html_content:
+
+        Returns:
+
+        """
+        if GENDER_MALE in html_content:
+            return '男'
+        elif GENDER_FEMALE in html_content:
+            return '女'
+        return '未知'
+
+    @staticmethod
+    def extract_follow_and_fans(selectors: List[Selector]) -> Tuple[str, str]:
+        """
+        提取关注数和粉丝数
+        Args:
+            selectors:
+
+        Returns:
+
+        """
+        pattern = re.compile(r'<span class="concern_num">\(<a[^>]*>(\d+)</a>\)</span>')
+        follow_match = pattern.findall(selectors[0].get())
+        fans_match = pattern.findall(selectors[1].get())
+        follows = follow_match[0] if follow_match else 0
+        fans = fans_match[0] if fans_match else 0
+        return follows, fans
+
+    @staticmethod
+    def extract_registration_duration(html_content: str) -> str:
+        """
+        "<span>吧龄:1.9年</span>"
+        Returns: 1.9年
+
+        """
+        pattern = re.compile(r'<span>吧龄:(\S+)</span>')
+        match = pattern.search(html_content)
+        return match.group(1) if match else ""
+
 
     @staticmethod
     def extract_data_field_value(selector: Selector) -> Dict:

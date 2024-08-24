@@ -68,6 +68,12 @@ TIEBA_NAME_LIST: List[str] = [
     # "盗墓笔记"
 ]
 
+TIEBA_CREATOR_URL_LIST = [
+    "https://tieba.baidu.com/home/main/?id=tb.1.7f139e2e.6CyEwxu3VJruH_-QqpCi6g&fr=frs",
+    # ........................
+]
+
+
 # 指定bili创作者ID列表(这里是up主页面的ID)
 BILI_CREATOR_ID_LIST = [
     "434377496",

@@ -11,7 +11,7 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 import config
 from base.base_crawler import AbstractApiClient
 from constant.baidu_tieba import TIEBA_URL
-from model.m_baidu_tieba import TiebaComment, TiebaNote
+from model.m_baidu_tieba import TiebaComment, TiebaCreator, TiebaNote
 from pkg.account_pool import AccountWithIpModel
 from pkg.account_pool.pool import AccountWithIpPoolManager
 from pkg.tools import utils
@@ -156,8 +156,9 @@ class BaiduTieBaClient(AbstractApiClient):
             try:
                 utils.logger.info(f"[BaiduTieBaClient.get] 请求uri:{uri} 尝试更换IP再次发起重试...")
                 await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
-                self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
-                return await self.request(method="GET", url=f"{TIEBA_URL}{final_uri}", **kwargs)
+                if config.ENABLE_IP_PROXY:
+                    self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
+                    return await self.request(method="GET", url=f"{TIEBA_URL}{final_uri}", **kwargs)
 
             except RetryError as ee:
                 # 获取原始异常
@@ -361,3 +362,77 @@ class BaiduTieBaClient(AbstractApiClient):
         uri = f"/f?kw={tieba_name}&pn={page_num}"
         response = await self.get(uri, return_response=True)
         return self._page_extractor.extract_tieba_note_list(response.text)
+
+
+    async def get_creator_info_by_url(self, creator_url: str) -> TiebaCreator:
+        """
+        根据创作者ID获取创作者信息
+        Args:
+            creator_url: 创作者主页URL
+
+        Returns:
+
+        """
+        creator_res = await self.request(method="GET", url=creator_url, return_response=True)
+        return self._page_extractor.extract_creator_info(creator_res.text)
+
+    async def get_notes_by_creator(self, user_name: str, page_number: int) -> Dict:
+        """
+        根据创作者获取创作者的所有帖子
+        Args:
+            user_name:
+            page_number:
+
+        Returns:
+
+        """
+        uri = f"/home/get/getthread"
+        params = {
+            "un": user_name,
+            "pn": page_number,
+            "id": "utf-8",
+            "_": utils.get_current_timestamp()
+        }
+        return await self.get(uri, params=params)
+
+    async def get_all_notes_by_creator_user_name(self,
+                                                 user_name: str, crawl_interval: float = 1.0,
+                                                 callback: Optional[Callable] = None,
+                                                 max_note_count: int = 0) -> List[TiebaNote]:
+        """
+        根据创作者用户名获取创作者所有帖子
+        Args:
+            user_name: 创作者用户名
+            crawl_interval: 爬取一次笔记的延迟单位（秒）
+            callback: 一次笔记爬取结束后的回调函数，是一个awaitable类型的函数
+            max_note_count: 帖子最大获取数量，如果为 0则获取所有
+
+        Returns:
+
+        """
+        result = []
+        notes_has_more = 1
+        page_number = 1
+        page_per_count = 20
+        total_get_count = 0
+        while notes_has_more == 1 and (max_note_count == 0 or total_get_count < max_note_count):
+            notes_res = await self.get_notes_by_creator(user_name, page_number)
+            if not notes_res or notes_res.get("no") != 0:
+                utils.logger.error(
+                    f"[BaiduTieBaClient.get_notes_by_creator] got user_name:{user_name} notes failed, notes_res: {notes_res}")
+                break
+            notes_data = notes_res.get("data")
+            notes_has_more = notes_data.get("has_more")
+            notes = notes_data["thread_list"]
+            utils.logger.info(
+                f"[BaiduTieBaClient.get_all_notes_by_creator] got user_name:{user_name} notes len : {len(notes)}")
+
+            note_detail_task = [self.get_note_by_id(note['thread_id']) for note in notes]
+            notes = await asyncio.gather(*note_detail_task)
+            if callback:
+                await callback(notes)
+            await asyncio.sleep(crawl_interval)
+            result.extend(notes)
+            page_number += 1
+            total_get_count += page_per_count
+        return result
