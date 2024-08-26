@@ -3,7 +3,7 @@ name = "MultimediaSpider"
 version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
-    {name = "wxlong", email = "weixiaolong@youxigongchang.com"},
+    {name = "weixiaolong", email = "350944197@qq.com"},
 ]
 dependencies = [
     "aiofiles==24.1.0",
@@ -29,7 +29,6 @@ license = {text = "MIT"}
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
-
 
 [tool.pdm]
 distribution = true
