@@ -1,6 +1,6 @@
-from sanic import Blueprint, json, redirect
+from sanic import Blueprint, response
 from helpers.authenticated import authenticated
-from helpers.nocodb import get_tasks
+from models.users import Users
 
 task_bp = Blueprint("task", url_prefix="/task")
 
@@ -8,7 +8,15 @@ task_bp = Blueprint("task", url_prefix="/task")
 @task_bp.route("/")
 @authenticated()
 async def get_task_list(request):
-    result = await get_tasks({})
+    users = await Users.all()
+    print("==========users", users)
+    return response.json({"users": users})
 
-    print("===get_task_list=====", result)
-    return json({"task": result})
+
+@task_bp.route("/create")
+@authenticated()
+async def create_task(request):
+    user = await Users.get(logtoId=request.ctx.user["sub"])
+
+    print("===get_task_list=====", user)
+    return response.json({"task": user})

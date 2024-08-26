@@ -20,6 +20,7 @@ dependencies = [
     "aiohttp",
     "logto>=0.2.1",
     "sanic>=24.6.0",
+    "tortoise-orm>=0.21.6",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
