@@ -2,10 +2,10 @@
 import os
 
 # 是否开启 IP 代理
-ENABLE_IP_PROXY = True
+ENABLE_IP_PROXY = False
 
 # 代理IP池数量
-IP_PROXY_POOL_COUNT = 2
+IP_PROXY_POOL_COUNT = 2 # 一般情况下设置成2个就够了，程序会自动维护IP可用性
 
 # 代理IP提供商名称
 IP_PROXY_PROVIDER_NAME = "kuaidaili"

@@ -18,4 +18,4 @@ REDIS_DB_NUM = os.getenv("REDIS_DB_NUM", 0)  # your redis db num
 # cache type
 CACHE_TYPE_REDIS = "redis"
 CACHE_TYPE_MEMORY = "memory"
-USE_CACHE_TYPE = CACHE_TYPE_REDIS
+USE_CACHE_TYPE = CACHE_TYPE_REDIS # 请使用 redis 作为缓存，因为这样不会浪费代理IP，本地换成如果程序重启，代理IP就会丢失

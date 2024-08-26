@@ -82,4 +82,6 @@ class IpCache:
 
         except Exception as e:
             utils.logger.error("[IpCache.load_all_ip] get ip err from redis db", e)
+            raise e
+
         return all_ip_list
