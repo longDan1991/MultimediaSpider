@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 
 import httpx
 from httpx import Response
-from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
+from tenacity import RetryError, retry, stop_after_attempt, wait_fixed, wait_random
 
 import config
 from base.base_crawler import AbstractApiClient
@@ -18,7 +18,7 @@ from pkg.rpc.sign_srv_client import SignServerClient, XhsSignRequest
 from pkg.tools import utils
 
 from .exception import (DataFetchError, ErrorEnum, IPBlockError,
-                        NeedVerifyError, SignError)
+                        NeedVerifyError, SignError, AccessFrequencyError)
 from .field import SearchNoteType, SearchSortType
 from .help import get_search_id
 
@@ -122,7 +122,7 @@ class XiaoHongShuClient(AbstractApiClient):
             await self.account_with_ip_pool.mark_ip_invalid(self.account_info.ip_info)
             self.account_info.ip_info = await self.account_with_ip_pool.proxy_ip_pool.get_proxy()
 
-    @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))
+    @retry(stop=stop_after_attempt(5), wait=wait_random(2, 10))
     async def request(self, method, url, **kwargs) -> Union[Response, Dict]:
         """
         封装httpx的公共请求方法，对请求响应做一些处理
@@ -165,6 +165,11 @@ class XiaoHongShuClient(AbstractApiClient):
             raise IPBlockError(ErrorEnum.IP_BLOCK.value.msg)
         elif data.get("code") == ErrorEnum.SIGN_FAULT.value.code:
             raise SignError(ErrorEnum.SIGN_FAULT.value.msg)
+        elif data.get("code") == ErrorEnum.ACCEESS_FREQUENCY_ERROR.value.code:
+            # 访问频次异常, 再随机延时一下
+            utils.logger.error(f"[XiaoHongShuClient.request] 访问频次异常，尝试随机延时一下...")
+            await asyncio.sleep(utils.random_delay_time(2, 10))
+            raise AccessFrequencyError(ErrorEnum.ACCEESS_FREQUENCY_ERROR.value.msg)
         else:
             raise DataFetchError(data)
 

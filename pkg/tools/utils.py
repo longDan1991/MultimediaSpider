@@ -44,3 +44,13 @@ def get_random_str(random_len: int = 12) -> str:
     for i in range(random_len):
         random_str += chars[_random.randint(0, length)]
     return random_str
+
+
+def random_delay_time(min_time: int = 1, max_time: int = 3) -> int:
+    """
+    获取随机延迟时间
+    :param min_time:
+    :param max_time:
+    :return:
+    """
+    return random.randint(min_time, max_time)
