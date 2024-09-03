@@ -280,7 +280,7 @@ class XiaoHongShuClient(AbstractApiClient):
         }
         return await self.post(uri, data)
 
-    async def get_note_by_id(self, note_id: str, xsec_source: str, xsec_token: str) -> Dict:
+    async def get_note_by_id(self, note_id: str, xsec_source: str = "", xsec_token: str = "") -> Dict:
         """
         获取笔记详情API
         Args:
@@ -291,16 +291,16 @@ class XiaoHongShuClient(AbstractApiClient):
         Returns:
 
         """
-        if not xsec_source:
-            xsec_source = "pc_search"
-
         data = {
             "source_note_id": note_id,
             "image_formats": ["jpg", "webp", "avif"],
             "extra": {"need_body_topic": 1},
-            "xsec_source": xsec_source,
-            "xsec_token": xsec_token
         }
+        # 开启xsec_token详情接口特别容易出现滑块验证，所以暂时不开启
+        # if xsec_token:
+        #     data["xsec_token"] = xsec_token
+        #     data["xsec_source"] = xsec_source
+
         uri = "/api/sns/web/v1/feed"
         res = await self.post(uri, data)
         if res and res.get("items"):

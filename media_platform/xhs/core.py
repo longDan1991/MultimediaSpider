@@ -194,6 +194,16 @@ class XiaoHongShuCrawler(AbstractCrawler):
         """
 
         async def get_note_detail_from_html_task(note_id: str, semaphore: asyncio.Semaphore) -> Dict:
+            """
+            Get note detail from html content
+            该方法会有一定几率触发验证码，所以不建议使用
+            Args:
+                note_id:
+                semaphore:
+
+            Returns:
+
+            """
             async with semaphore:
                 try:
                     _note_detail: Dict = await self.xhs_client.get_note_by_id_from_html(note_id)
@@ -211,7 +221,8 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     return {}
 
         get_note_detail_task_list = [
-            get_note_detail_from_html_task(note_id=note_id, semaphore=asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)) for
+            self.get_note_detail(note_id=note_id, xsec_source="", xsec_token="",
+                                 semaphore=asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)) for
             note_id in config.XHS_SPECIFIED_ID_LIST
         ]
 
@@ -289,6 +300,6 @@ class XiaoHongShuCrawler(AbstractCrawler):
             utils.logger.info(f"[XiaoHongShuCrawler.get_comments_async_task] Begin get note id comments {note_id}")
             await self.xhs_client.get_note_all_comments(
                 note_id=note_id,
-                crawl_interval=0, # 暂时不加延迟，访问签名服务有一定的延时
+                crawl_interval=random.random(),
                 callback=xhs_store.batch_update_xhs_note_comments
             )
