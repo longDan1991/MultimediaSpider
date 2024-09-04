@@ -138,9 +138,10 @@ class DouYinApiClient(AbstractApiClient):
         final_url_params = copy.copy(url_params)
         final_url_params.update(self._common_params)
         final_url_params.update(self._verify_params)
+        query_params = urllib.parse.urlencode(final_url_params)
         sign_req: DouyinSignRequest = DouyinSignRequest(
             uri=uri,
-            query_params=urllib.parse.urlencode(final_url_params),
+            query_params=query_params,
             user_agent=self._user_agent,
             cookies=self._cookies
         )
@@ -291,7 +292,7 @@ class DouYinApiClient(AbstractApiClient):
             query_params["filter_selected"] = json.dumps({
                 "sort_type": str(sort_type.value),
                 "publish_time": str(publish_time.value)
-            })
+            }, separators=(',', ':'))
             query_params["is_filter_search"] = 1
             query_params["search_source"] = "tab_search"
         return await self.get("/aweme/v1/web/general/search/single/", query_params)
