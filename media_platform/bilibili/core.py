@@ -149,7 +149,7 @@ class BilibiliCrawler(AbstractCrawler):
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
         task_list: List[Task] = []
         for video_id in video_id_list:
-            task = asyncio.create_task(self.get_comments(video_id, semaphore), name=video_id)
+            task = asyncio.create_task(self.get_comments_async_task(video_id, semaphore), name=video_id)
             task_list.append(task)
         await asyncio.gather(*task_list)
 
