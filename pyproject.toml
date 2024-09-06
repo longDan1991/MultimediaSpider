@@ -21,6 +21,7 @@ dependencies = [
     "logto>=0.2.1",
     "sanic>=24.6.0",
     "tortoise-orm>=0.21.6",
+    "sanic-session>=0.8.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

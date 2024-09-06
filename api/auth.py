@@ -1,5 +1,8 @@
-from sanic import Blueprint, redirect
-from helpers.authenticated import client
+from sanic import Blueprint, redirect, response 
+from helpers.logto import get_sign_in_url, handle_sign_in, decode_id_token
+import time
+
+
 
 auth_bp = Blueprint("auth", url_prefix="/auth")
 
@@ -7,28 +10,41 @@ auth_bp = Blueprint("auth", url_prefix="/auth")
 @auth_bp.route("/callback")
 async def callback(request):
     try:
-        await client.handleSignInCallback(request.url)  # Handle a lot of stuff
-        return redirect(
-            "/"
-        )  # Redirect the user to the home page after a successful sign-in
+        if not request.ctx.session.get('signIn'):
+            return response.empty();
+  
+        res = await handle_sign_in(
+            request.ctx.session['signIn'],
+            request.url
+        )
+        request.ctx.session['tokens'] = {
+            **res.model_dump(),
+            'expiresAt': res.expires_in + int(time.time() * 1000),
+            'idToken': decode_id_token(res.id_token).model_dump(),
+        }
+        request.ctx.session['signIn'] = None
+ 
+        return redirect('/')
     except Exception as e:
         # Change this to your error handling logic
-        return "Error: " + str(e)
+        return response.empty();
 
 
 @auth_bp.route("/sign-in")
 async def sign_in(request):
     # Get the sign-in URL and redirect the user to it
-    return redirect(
-        await client.signIn(
-            redirectUri="http://localhost:8082/api/auth/callback",
-        )
-    )
+
+    sign_in_url = await get_sign_in_url()
+    request.ctx.session['signIn'] = {
+        "codeVerifier": sign_in_url["codeVerifier"],
+        "state": sign_in_url["state"],
+        "redirectUri": sign_in_url["redirectUri"],
+    }
+    return redirect(sign_in_url["signInUri"])
 
 
 @auth_bp.route("/sign-out")
 async def sign_out(request):
-    return redirect(
-        # Redirect the user to the home page after a successful sign-out
-        await client.signOut()
-    )
+
+    request.ctx.session['tokens'] = None
+    return response.json({'message': 'Sign out successful'}) 

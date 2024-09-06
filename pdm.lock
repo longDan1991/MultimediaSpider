@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:0d10e0806493076473a7f4349e025739163d574abb9ba07ed12dbd618e909775"
+content_hash = "sha256:0b62017365a85ce4e1d8c2559d7d1d3acd7a517cd4ef36b305769c3da395a6bd"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -1196,6 +1196,20 @@ files = [
 ]
 
 [[package]]
+name = "sanic-session"
+version = "0.8.0"
+summary = "Provides server-backed sessions for Sanic using Redis, Memcache and more."
+groups = ["default"]
+dependencies = [
+    "sanic",
+    "ujson",
+]
+files = [
+    {file = "sanic_session-0.8.0-py3-none-any.whl", hash = "sha256:ead1b62c4c7773cfaaa22d77ed0eb23b423d1d60b21e11225cc9132dff37b2dd"},
+    {file = "sanic_session-0.8.0.tar.gz", hash = "sha256:c9c500f015f22577d5c9c7743d637741b50f97e1689fa795318d614b6dbb58d8"},
+]
+
+[[package]]
 name = "setuptools"
 version = "73.0.1"
 requires_python = ">=3.8"
@@ -1298,7 +1312,6 @@ version = "5.10.0"
 requires_python = ">=3.8"
 summary = "Ultra fast JSON encoder and decoder for Python"
 groups = ["default"]
-marker = "sys_platform != \"win32\" and implementation_name == \"cpython\""
 files = [
     {file = "ujson-5.10.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:2601aa9ecdbee1118a1c2065323bda35e2c5a2cf0797ef4522d485f9d3ef65bd"},
     {file = "ujson-5.10.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:348898dd702fc1c4f1051bc3aacbf894caa0927fe2c53e68679c073375f732cf"},

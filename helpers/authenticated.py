@@ -1,31 +1,40 @@
 from functools import wraps
-from logto import LogtoClient, LogtoConfig
-from sanic import json, response, redirect
+import time 
+from sanic import response, redirect
 
-client = LogtoClient(
-    LogtoConfig(
-        endpoint="https://1pqoyb.logto.app/",
-        appId="9vho0rrkhcy5ge1a2m2l5",
-        appSecret="8aQpExEYIM9IoyNCw8vQXxG5NXaJ28Nh",
-    ),
-)
+from helpers.logto import refresh_tokens, decode_id_token
+
+def _not_auth(shouldRedirect):
+    if shouldRedirect:
+        return redirect("/auth/sign-in")
+    return response.json({"error": "Not authenticated"}, status=401)
 
 
-def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
+def authenticated(shouldRedirect: bool = False):
     def decorator(func):
         @wraps(func)
         async def wrapper(request, *args, **kwargs):
-            print("client.isAuthenticated()", client.isAuthenticated())
-            if client.isAuthenticated() is False:
-                if shouldRedirect:
-                    return redirect("/sign-in")
-                return json({"error": "Not authenticated"}, status=401)
-
-            request.ctx.user = (
-                await client.fetchUserInfo()
-                if fetchUserInfo
-                else client.getIdTokenClaims()
-            )
+            tokens = request.ctx.session.get("tokens")
+            if not tokens:
+                return _not_auth(shouldRedirect)
+            
+            current_time = time.time() * 1000
+            
+            if tokens["expiresAt"] <= current_time:
+                # Access token expired, refresh for new tokens
+                try:
+                    res = await refresh_tokens(tokens["refresh_token"])
+                    request.ctx.session["tokens"] = {
+                        **res.model_dump(),
+                        'expiresAt': res.expires_in + int(time.time() * 1000),
+                        "idToken": decode_id_token(res.id_token).model_dump(),
+                    }
+                except:
+                    # Exchange failed, redirect to sign in
+                    return _not_auth(shouldRedirect)
+            
+            request.ctx.user = request.ctx.session["tokens"]["idToken"]
+            
             return await func(request, *args, **kwargs)
 
         return wrapper

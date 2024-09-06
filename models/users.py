@@ -6,5 +6,5 @@ class Users(Model):
     name = fields.CharField(50)
     logtoId = fields.CharField(50)
 
-    def __str__(self):
-        return f"I am {self.name}"
+    class Meta:
+        table = "users"
