@@ -7,18 +7,20 @@ from urllib.parse import urlencode
 
 import httpx
 from httpx import Response
-from tenacity import RetryError, retry, stop_after_attempt, wait_fixed, wait_random
+from tenacity import (RetryError, retry, stop_after_attempt, wait_fixed,
+                      wait_random)
 
 import config
 from base.base_crawler import AbstractApiClient
+from config import PER_NOTE_MAX_COMMENTS_COUNT
 from constant.xiaohongshu import XHS_API_URL, XHS_INDEX_URL
 from pkg.account_pool import AccountWithIpModel
 from pkg.account_pool.pool import AccountWithIpPoolManager
 from pkg.rpc.sign_srv_client import SignServerClient, XhsSignRequest
 from pkg.tools import utils
 
-from .exception import (DataFetchError, ErrorEnum, IPBlockError,
-                        NeedVerifyError, SignError, AccessFrequencyError)
+from .exception import (AccessFrequencyError, DataFetchError, ErrorEnum,
+                        IPBlockError, NeedVerifyError, SignError)
 from .field import SearchNoteType, SearchSortType
 from .help import get_search_id
 
@@ -378,6 +380,9 @@ class XiaoHongShuClient(AbstractApiClient):
                 await callback(note_id, comments)
             await asyncio.sleep(crawl_interval)
             result.extend(comments)
+            if PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= PER_NOTE_MAX_COMMENTS_COUNT:
+                utils.logger.info(f"[XiaoHongShuClient.get_note_all_comments] The number of comments exceeds the limit: {PER_NOTE_MAX_COMMENTS_COUNT}")
+                break
             sub_comments = await self.get_comments_all_sub_comments(comments, crawl_interval, callback)
             result.extend(sub_comments)
         return result

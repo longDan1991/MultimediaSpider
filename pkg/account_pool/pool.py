@@ -14,7 +14,8 @@ from pkg.proxy import IpInfoModel
 from pkg.proxy.proxy_ip_pool import ProxyIpPool
 from pkg.tools import utils
 from repo.accounts_cookies import cookies_manage_sql
-from repo.accounts_cookies.cookies_manage_sql import update_account_status_by_id
+from repo.accounts_cookies.cookies_manage_sql import \
+    update_account_status_by_id
 
 
 class AccountPoolManager:

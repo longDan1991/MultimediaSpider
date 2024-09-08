@@ -10,6 +10,7 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
 from base.base_crawler import AbstractApiClient
+from config import PER_NOTE_MAX_COMMENTS_COUNT
 from constant.baidu_tieba import TIEBA_URL
 from model.m_baidu_tieba import TiebaComment, TiebaCreator, TiebaNote
 from pkg.account_pool import AccountWithIpModel
@@ -300,6 +301,10 @@ class BaiduTieBaClient(AbstractApiClient):
             if callback:
                 await callback(note_detail.note_id, comments)
             result.extend(comments)
+            if PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= PER_NOTE_MAX_COMMENTS_COUNT:
+                utils.logger.info(
+                    f"[BaiduTieBaClient.get_note_all_comments] The number of comments exceeds the limit: {PER_NOTE_MAX_COMMENTS_COUNT}")
+                break
             # 获取所有子评论
             await self.get_comments_all_sub_comments(comments, crawl_interval=crawl_interval, callback=callback)
             await asyncio.sleep(crawl_interval)

@@ -11,6 +11,7 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
 from base.base_crawler import AbstractApiClient
+from config import PER_NOTE_MAX_COMMENTS_COUNT
 from constant.douyin import DOUYIN_API_URL, DOUYIN_FIXED_USER_AGENT
 from pkg.account_pool import AccountWithIpModel
 from pkg.account_pool.pool import AccountWithIpPoolManager
@@ -390,6 +391,10 @@ class DouYinApiClient(AbstractApiClient):
             result.extend(comments)
             if callback:  # 如果有回调函数，就执行回调函数
                 await callback(aweme_id, comments)
+            if PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= PER_NOTE_MAX_COMMENTS_COUNT:
+                utils.logger.info(
+                    f"[DouYinApiClient.get_note_all_comments] The number of comments exceeds the limit: {PER_NOTE_MAX_COMMENTS_COUNT}")
+                break
             await asyncio.sleep(crawl_interval)
             sub_comments = await self.get_comments_all_sub_comments(aweme_id, comments, crawl_interval, callback)
             result.extend(sub_comments)

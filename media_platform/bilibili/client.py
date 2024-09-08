@@ -14,6 +14,7 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
 from base.base_crawler import AbstractApiClient
+from config import PER_NOTE_MAX_COMMENTS_COUNT
 from constant.bilibili import BILI_API_URL, BILI_INDEX_URL
 from pkg.account_pool import AccountWithIpModel
 from pkg.account_pool.pool import AccountWithIpPoolManager
@@ -343,6 +344,10 @@ class BilibiliClient(AbstractApiClient):
                 await callback(video_id, comment_list)
             await asyncio.sleep(crawl_interval)
             result.extend(comment_list)
+            if PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= PER_NOTE_MAX_COMMENTS_COUNT:
+                utils.logger.info(
+                    f"[BilibiliClient.get_note_all_comments] The number of comments exceeds the limit: {PER_NOTE_MAX_COMMENTS_COUNT}")
+                break
             sub_comments = await self.get_comments_all_sub_comments(video_id, comment_list, crawl_interval, callback)
             result.extend(sub_comments)
         return result

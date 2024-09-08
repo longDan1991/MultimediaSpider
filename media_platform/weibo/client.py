@@ -15,6 +15,7 @@ from httpx import Response
 from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
+from config import PER_NOTE_MAX_COMMENTS_COUNT
 from constant.weibo import WEIBO_API_URL
 from pkg.account_pool import AccountWithIpModel
 from pkg.account_pool.pool import AccountWithIpPoolManager
@@ -288,6 +289,10 @@ class WeiboClient:
                 await callback(note_id, comment_list)
             await asyncio.sleep(crawl_interval)
             result.extend(comment_list)
+            if PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= PER_NOTE_MAX_COMMENTS_COUNT:
+                utils.logger.info(
+                    f"[WeiboClient.get_note_all_comments] The number of comments exceeds the limit: {PER_NOTE_MAX_COMMENTS_COUNT}")
+                break
             sub_comment_result = await self.get_comments_all_sub_comments(note_id, comment_list, callback)
             result.extend(sub_comment_result)
         return result

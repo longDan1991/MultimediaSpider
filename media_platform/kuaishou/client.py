@@ -11,6 +11,7 @@ from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
 
 import config
 from base.base_crawler import AbstractApiClient
+from config import PER_NOTE_MAX_COMMENTS_COUNT
 from constant.kuaishou import KUAISHOU_API
 from pkg.account_pool import AccountWithIpModel
 from pkg.account_pool.pool import AccountWithIpPoolManager
@@ -371,6 +372,10 @@ class KuaiShouApiClient(AbstractApiClient):
             if callback:
                 await callback(photo_id, comments)
             result.extend(comments)
+            if PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= PER_NOTE_MAX_COMMENTS_COUNT:
+                utils.logger.info(
+                    f"[KuaiShouApiClient.get_note_all_comments] The number of comments exceeds the limit: {PER_NOTE_MAX_COMMENTS_COUNT}")
+                break
             await asyncio.sleep(crawl_interval)
             sub_comments = await self.get_comments_all_sub_comments(
                 comments, photo_id, crawl_interval, callback
