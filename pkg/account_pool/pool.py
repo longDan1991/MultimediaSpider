@@ -14,6 +14,7 @@ from pkg.proxy import IpInfoModel
 from pkg.proxy.proxy_ip_pool import ProxyIpPool
 from pkg.tools import utils
 from repo.accounts_cookies import cookies_manage_sql
+from repo.accounts_cookies.cookies_manage_sql import update_account_status_by_id
 
 
 class AccountPoolManager:
@@ -105,19 +106,23 @@ class AccountPoolManager:
         """
         self._account_list.append(account)
 
-    def update_account_status(self, account: AccountInfoModel, status: AccountStatusEnum):
+    async def update_account_status(self, account: AccountInfoModel, status: AccountStatusEnum):
         """
         update account status
         Args:
             account: account info model
             status: account status enum
         """
-        for account_item in self._account_list:
-            if account_item.id == account.id:
-                account_item.status = status
-                account_item.invalid_timestamp = utils.get_current_timestamp()
-                # todo update account status in mysql
-                return
+
+        account.status = status
+        account.invalid_timestamp = utils.get_current_timestamp()
+        if self._account_save_type == MYSQL_ACCOUNT_SAVE:
+            await update_account_status_by_id(account.id, account)
+        elif self._account_save_type == EXCEL_ACCOUNT_SAVE:
+            # excel中的账户状态好像没有更新的必要，暂且设置为todo吧
+            # TODO: update account status in xlsx
+            pass
+        return
 
 
 class AccountWithIpPoolManager(AccountPoolManager):
@@ -166,7 +171,7 @@ class AccountWithIpPoolManager(AccountPoolManager):
         Returns:
 
         """
-        self.update_account_status(account, AccountStatusEnum.INVALID)
+        await self.update_account_status(account, AccountStatusEnum.INVALID)
 
     async def mark_ip_invalid(self, ip_info: Optional[IpInfoModel]):
         """
@@ -190,6 +195,7 @@ async def test_get_account_with_ip():
     await account_pool_manager.async_initialize()
     account_with_ip = await account_pool_manager.get_account_with_ip_info()
     print(account_with_ip)
+    await account_pool_manager.mark_account_invalid(account_with_ip.account)
     return account_with_ip
 
 
