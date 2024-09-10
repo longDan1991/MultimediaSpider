@@ -244,17 +244,18 @@ class WeiboClient:
         }
         return cast(Dict, await self.get(uri, params))
 
-    async def get_note_comments(self, mid_id: str, max_id: int) -> Dict:
+    async def get_note_comments(self, mid_id: str, max_id: int, max_id_type: int = 0) -> Dict:
         """get notes comments
         :param mid_id: 微博ID
         :param max_id: 分页参数ID
+        :param max_id_type: 分页参数类型
         :return:
         """
         uri = "/comments/hotflow"
         params = {
             "id": mid_id,
             "mid": mid_id,
-            "max_id_type": 0,
+            "max_id_type": max_id_type,
         }
         if max_id > 0:
             params.update({"max_id": max_id})
@@ -278,11 +279,13 @@ class WeiboClient:
         result = []
         is_end = False
         max_id = -1
+        max_id_type = 0
         while not is_end:
-            comments_res = await self.get_note_comments(note_id, max_id)
+            comments_res = await self.get_note_comments(note_id, max_id, max_id_type)
             if not comments_res:
                 break
             max_id = comments_res.get("max_id", 0)
+            max_id_type = comments_res.get("max_id_type", 0)
             comment_list: List[Dict] = comments_res.get("data", [])
             is_end = max_id == 0
             if callback:  # 如果有回调函数，就执行回调函数
