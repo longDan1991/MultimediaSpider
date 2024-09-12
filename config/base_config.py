@@ -14,12 +14,6 @@ SORT_TYPE = "popularity_descending"
 PUBLISH_TIME_TYPE = 0
 CRAWLER_TYPE = "search"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
 
-# 数据保存类型选项配置,支持三种类型：csv、db、json
-SAVE_DATA_OPTION = "db"  # csv or db or json
-
-# 账号池保存类型选项配置,支持2种类型：xlsx、mysql
-ACCOUNT_POOL_SAVE_TYPE = os.getenv("ACCOUNT_POOL_SAVE_TYPE", EXCEL_ACCOUNT_SAVE)
-
 # 爬取开始页数 默认从第一页开始
 START_PAGE = 1
 

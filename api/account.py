@@ -20,14 +20,37 @@ async def get_account(request):
 
     cookies = await Cookies.all().filter(user=user)
 
-    # 正确返回用户信息
     user_data = {
-        "id": user.id,
         "name": user.name,
         "logtoId": user.logtoId
     }
 
     return response.json({
-        "user": user_data,
-        "cookies": [{"id": cookie.id, "value": cookie.value} for cookie in cookies]
+        "data": {
+            "user": user_data,
+            "cookies": [{"id": cookie.id, "value": cookie.value} for cookie in cookies]
+        }
     })
+
+@account_bp.route("/store-cookie", methods=["POST"])
+async def store_cookie(request):
+    data = request.json
+    logtoId = data.get("logtoId")
+    cookie_value = data.get("cookies")
+    url = data.get("url")
+
+    try:
+        user = await Users.get(logtoId=logtoId)
+    except DoesNotExist:
+        return response.json({"message": "用户不存在"}, status=404)
+
+    try:
+        cookie = await Cookies.get(user=user, url=url)
+        cookie.value = cookie_value
+        await cookie.save() 
+    except DoesNotExist:
+        cookie = await Cookies.create(user=user, url=url, value=cookie_value) 
+
+    return response.json({
+        "data": cookie.id,
+    }, status=201)

@@ -2,6 +2,8 @@ import math
 from sanic import Blueprint, response
 from helpers.authenticated import authenticated
 from models.users import Users
+from models.tasks import Tasks, TaskDetails
+from tortoise.expressions import Q
 
 task_bp = Blueprint("task", url_prefix="/task")
 
@@ -9,33 +11,39 @@ task_bp = Blueprint("task", url_prefix="/task")
 @task_bp.route("/")
 @authenticated()
 async def get_task_list(request):
-    page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("per_page", 10))
-
-    total_users = await Users.all().count()
-
-    start_index = (page - 1) * per_page
-
-    users = await Users.all().offset(start_index).limit(per_page)
-
-    headers = {"x-total-count": str(total_users)}
-
-    return response.json(
-        users,
-        headers=headers,
-    )
+    start = int(request.args.get('_start', 0))
+    end = int(request.args.get('_end', 10))
+    
+    total = await Tasks.all().count()
+    
+    tasks = await Tasks.all().offset(start).limit(end - start)
+    
+    task_list = [
+        {
+            "id": task.id,
+            "platform": task.platform,
+            "crawler_type": task.crawler_type,
+            "data": task.data
+        }
+        for task in tasks
+    ]
+    
+    return response.json(task_list, headers={"X-Total-Count": str(total)})
 
 
 @task_bp.route("/create", methods=["POST"])
 @authenticated()
 async def create_task(request):
-    logtoId = request.ctx.user["sub"]
-
-    user = await Users.get(logtoId=logtoId)
-
-    if not user:
-        user = await Users.create(logtoId=logtoId)
-
-    # task = await Task.create(user=user)
-
-    return response.json({"task_id": 0})
+    data = request.json
+    
+    task_details = TaskDetails(**data.get("task_details", {}))
+    
+    new_task = await Tasks.create(
+        platform=data.get("platform"),
+        crawler_type=data.get("crawler_type"),
+        data=task_details.dict()
+    )
+    
+    return response.json({ 
+        "task_id": new_task.id
+    }, status=201)

@@ -11,7 +11,7 @@ Session(app, interface=TortoiseSessionInterface())
 register_tortoise(
     app,
     db_url="sqlite://data/db.sqlite3",
-    modules={"models": ["models.users", "models.cookies", "models.sessions"]},
+    modules={"models": ["models.users", "models.cookies", "models.sessions", "models.tasks"]},
     generate_schemas=True,
 )
 
