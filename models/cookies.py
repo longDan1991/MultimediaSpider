@@ -6,3 +6,5 @@ class Cookies(Model):
     user = fields.ForeignKeyField("models.Users", related_name="user")
     url = fields.CharField(50)
     value = fields.TextField()
+    platform = fields.CharField(50)
+    platform_account = fields.JSONField()
