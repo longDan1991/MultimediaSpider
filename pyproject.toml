@@ -22,6 +22,7 @@ dependencies = [
     "sanic>=24.6.0",
     "tortoise-orm>=0.21.6",
     "sanic-session>=0.8.0",
+    "PyExecJS>=1.5.1",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:0b62017365a85ce4e1d8c2559d7d1d3acd7a517cd4ef36b305769c3da395a6bd"
+content_hash = "sha256:4489686122ba1bcad694fa495671e302b575b97deeec376a8f9874922785ede8"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -1070,6 +1070,18 @@ files = [
     {file = "pydantic_core-2.14.5-pp39-pypy39_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:f5e412d717366e0677ef767eac93566582518fe8be923361a5c204c1a62eaafe"},
     {file = "pydantic_core-2.14.5-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:513b07e99c0a267b1d954243845d8a833758a6726a3b5d8948306e3fe14675e3"},
     {file = "pydantic_core-2.14.5.tar.gz", hash = "sha256:6d30226dfc816dd0fdf120cae611dd2215117e4f9b124af8c60ab9093b6e8e71"},
+]
+
+[[package]]
+name = "pyexecjs"
+version = "1.5.1"
+summary = "Run JavaScript code from Python"
+groups = ["default"]
+dependencies = [
+    "six>=1.10.0",
+]
+files = [
+    {file = "PyExecJS-1.5.1.tar.gz", hash = "sha256:34cc1d070976918183ff7bdc0ad71f8157a891c92708c00c5fbbff7a769f505c"},
 ]
 
 [[package]]

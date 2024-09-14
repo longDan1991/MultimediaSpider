@@ -1,38 +1,37 @@
+import asyncio
+import random
 from typing import Union, Dict
 import json
-from urllib.parse import urlencode
-from helpers import request as _request
 import httpx
+import execjs
 
-from tenacity import RetryError, retry, stop_after_attempt, wait_fixed
-from httpx import Response
+from tenacity import RetryError
+from httpx import RequestError, Response
 from management.proxies.proxy import get_proxy
-from tools import utils
 import traceback
 
+
 from ....media_platform.xhs.exception import (
-    DataFetchError,
     ErrorEnum,
-    IPBlockError,
-    NeedVerifyError,
-    SignError,
 )
 
-XHS_API_URL = "https://edith.xiaohongshu.com"
-XHS_INDEX_URL = "https://www.xiaohongshu.com"
-XHS_SIGN_SERVER_URL = "http://localhost:8989"
+_XHS_API_URL = "https://edith.xiaohongshu.com"
+_XHS_INDEX_URL = "https://www.xiaohongshu.com"
+_XHS_SIGN_SERVER_URL = "http://localhost:8989"
 
-headers = {
+_headers = {
     "Content-Type": "application/json;charset=UTF-8",
     "Accept": "application/json, text/plain, */*",
     "Cookie": "",
-    "origin": XHS_INDEX_URL,
-    "referer": XHS_INDEX_URL,
+    "origin": _XHS_INDEX_URL,
+    "referer": _XHS_INDEX_URL,
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
 }
 
 
-timeout = 10
+_timeout = 10
+
+_Xhs_Sign = execjs.compile(open("pkg/js/xhs.js", encoding="utf-8").read())
 
 
 async def request(method, url, **kwargs) -> Union[Response, Dict]:
@@ -42,7 +41,7 @@ async def request(method, url, **kwargs) -> Union[Response, Dict]:
         del kwargs["return_response"]
 
     async with httpx.AsyncClient(proxies={"https://": proxy}) as client:
-        response = await client.request(method, url, timeout=timeout, **kwargs)
+        response = await client.request(method, url, timeout=_timeout, **kwargs)
 
     if need_return_ori_response:
         return response
@@ -56,57 +55,50 @@ async def request(method, url, **kwargs) -> Union[Response, Dict]:
         # someday someone maybe will bypass captcha
         verify_type = response.headers["Verifytype"]
         verify_uuid = response.headers["Verifyuuid"]
-        raise NeedVerifyError(
-            f"出现验证码，请求失败，Verifytype: {verify_type}，Verifyuuid: {verify_uuid}",
-            response=response,
-            verify_type=verify_type,
-            verify_uuid=verify_uuid,
+        raise Exception(
+            f"出现验证码，请求失败，Verifytype: {verify_type}，Verifyuuid: {verify_uuid}, Response: {response}"
         )
     elif data.get("success"):
         return data.get("data", data.get("success"))
     elif data.get("code") == ErrorEnum.IP_BLOCK.value.code:
-        raise IPBlockError(ErrorEnum.IP_BLOCK.value.msg)
+        raise RequestError(ErrorEnum.IP_BLOCK.value.msg)
     elif data.get("code") == ErrorEnum.SIGN_FAULT.value.code:
-        raise SignError(ErrorEnum.SIGN_FAULT.value.msg)
+        raise RequestError(ErrorEnum.SIGN_FAULT.value.msg)
+    elif data.get("code") == ErrorEnum.ACCEESS_FREQUENCY_ERROR.value.code:
+        # 访问频次异常, 再随机延时一下
+        print(f"[XiaoHongShuClient.request] 访问频次异常，尝试随机延时一下...")
+        await asyncio.sleep(random.randint(2, 10))
+        raise RequestError(ErrorEnum.ACCEESS_FREQUENCY_ERROR.value.msg)
     else:
-        raise DataFetchError(data)
+        raise RequestError(data)
 
 
-async def _xiaohongshu_sign(uri: str, cookies: str, data=None):
-    sign_server_uri = "/signsrv/v1/xhs/sign"
-    data = json.dumps({uri, data, cookies})
-    res_json = await _request(method="POST", uri=sign_server_uri, json=data)
-    if not res_json:
-        raise Exception(f"从签名服务器获取签名失败")
-
-    if res_json.isok:
-        return res_json
-    raise Exception(f"从签名服务器获取签名失败")
-
-
-async def _pre_headers( uri: str, cookies: str, data=None) -> Dict:
-    result = await _xiaohongshu_sign(uri, cookies, data)
+async def _pre_headers(uri: str, cookies: str, data=None) -> Dict:
+    result = _Xhs_Sign.call("sign", uri, data, cookies)
     h = {
-        "X-S": result.data.x_s,
-        "X-T": result.data.x_t,
-        "x-S-Common": result.data.x_s_common,
-        "X-B3-Traceid": result.data.x_b3_traceid,
+        "X-S": result.get("x-s"),
+        "X-T": result.get("x-t"),
+        "x-S-Common": result.get("x-s-common"),
+        "X-B3-Traceid": result.get("x-b3-traceid"),
     }
-    h.update(headers)
+    h.update(_headers)
     return h
 
 
-async def get(uri: str, params=None, **kwargs) -> Union[Response, Dict]:
-    final_uri = uri
-    if isinstance(params, dict):
-        final_uri = f"{uri}?" f"{urlencode(params)}"
+async def post(uri: str, cookies: str, data: dict, **kwargs) -> Union[Dict, Response]:
+    json_str = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
     try:
-        headers = await _pre_headers(final_uri)
+        headers = await _pre_headers(uri, cookies, data)
         res = await request(
-            method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs
+            method="POST",
+            url=f"{_XHS_API_URL}{uri}",
+            data=json_str,
+            headers=headers,
+            **kwargs,
         )
         return res
     except RetryError as e:
+        # 获取原始异常
         original_exception = e.last_attempt.exception()
         traceback.print_exception(
             type(original_exception),
@@ -114,12 +106,17 @@ async def get(uri: str, params=None, **kwargs) -> Union[Response, Dict]:
             original_exception.__traceback__,
         )
 
-        utils.logger.error(
-            f"get重试失败: {uri} 请尝试更换账号与IP再次发起重试"
+        print(
+            f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试"
         )
-        await self.mark_account_invalid(self.account_info)
-        await self.update_account_info()
-        headers = await self._pre_headers(final_uri)
-        return await self.request(
-            method="GET", url=f"{XHS_API_URL}{final_uri}", headers=headers, **kwargs
-        )
+        # 如果重试了5次次都还是异常了，那么尝试更换账号信息
+        # await self.mark_account_invalid(self.account_info)
+        # await self.update_account_info()
+        # headers = await self._pre_headers(uri, data)
+        # return await self.request(
+        #     method="POST",
+        #     url=f"{XHS_API_URL}{uri}",
+        #     data=json_str,
+        #     headers=headers,
+        #     **kwargs,
+        # )
