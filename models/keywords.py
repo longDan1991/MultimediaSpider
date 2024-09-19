@@ -9,6 +9,7 @@ class Keywords(Model):
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
     search_results = fields.JSONField(null=True)
+    user = fields.ForeignKeyField("models.Users", related_name="keywords")
 
     class Meta:
         table = "keywords"

@@ -11,7 +11,7 @@ from management.proxies.proxy import get_proxy
 import traceback
 
 
-from ....media_platform.xhs.exception import (
+from media_platform.xhs.exception import (
     ErrorEnum,
 )
 
@@ -19,28 +19,21 @@ _XHS_API_URL = "https://edith.xiaohongshu.com"
 _XHS_INDEX_URL = "https://www.xiaohongshu.com"
 _XHS_SIGN_SERVER_URL = "http://localhost:8989"
 
-_headers = {
-    "Content-Type": "application/json;charset=UTF-8",
-    "Accept": "application/json, text/plain, */*",
-    "Cookie": "",
-    "origin": _XHS_INDEX_URL,
-    "referer": _XHS_INDEX_URL,
-    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-}
-
 
 _timeout = 10
 
-_Xhs_Sign = execjs.compile(open("pkg/js/xhs.js", encoding="utf-8").read())
+_Xhs_Sign = execjs.compile(open("helpers/js/xhs.js", encoding="utf-8").read())
 
 
 async def request(method, url, **kwargs) -> Union[Response, Dict]:
-    proxy = await get_proxy()
+    # proxy = await get_proxy()
+    # print("============proxy", proxy)
     need_return_ori_response: bool = kwargs.get("return_response", False)
     if "return_response" in kwargs:
         del kwargs["return_response"]
 
-    async with httpx.AsyncClient(proxies={"https://": proxy}) as client:
+    # async with httpx.AsyncClient(proxies={"https://": proxy}) as client:
+    async with httpx.AsyncClient() as client:
         response = await client.request(method, url, timeout=_timeout, **kwargs)
 
     if need_return_ori_response:
@@ -48,6 +41,7 @@ async def request(method, url, **kwargs) -> Union[Response, Dict]:
 
     try:
         data = response.json()
+        print("=============data", data)
     except json.decoder.JSONDecodeError:
         return response
 
@@ -81,7 +75,16 @@ async def _pre_headers(uri: str, cookies: str, data=None) -> Dict:
         "x-S-Common": result.get("x-s-common"),
         "X-B3-Traceid": result.get("x-b3-traceid"),
     }
-    h.update(_headers)
+    h.update(
+        {
+            "Content-Type": "application/json;charset=UTF-8",
+            "Accept": "application/json, text/plain, */*",
+            "Cookie": cookies,
+            "origin": _XHS_INDEX_URL,
+            "referer": _XHS_INDEX_URL,
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        }
+    )
     return h
 
 
@@ -89,6 +92,7 @@ async def post(uri: str, cookies: str, data: dict, **kwargs) -> Union[Dict, Resp
     json_str = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
     try:
         headers = await _pre_headers(uri, cookies, data)
+        print("============headers", headers)
         res = await request(
             method="POST",
             url=f"{_XHS_API_URL}{uri}",

@@ -2,8 +2,9 @@
 
 import httpx
 import config
-from tools import utils
 from typing import Tuple, List
+
+from pkg.tools import utils
 
 
 def _parse_proxy_info(proxy_info: str) -> Tuple[str, int, int]:
@@ -25,13 +26,13 @@ def _parse_proxy_info(proxy_info: str) -> Tuple[str, int, int]:
 
         ip, port = ip_port.split(":")
 
-        return ip, port, expire_ts
+        return ip, int(port), int(expire_ts)
 
     except ValueError:
         return None
 
 
-async def fetch_proxies(num: int) -> List[(str, int, int)]:
+async def fetch_proxies(num: int) -> List[Tuple[str, int, int]]:
     """
     从快代理获取指定数量的代理信息
 
@@ -39,7 +40,7 @@ async def fetch_proxies(num: int) -> List[(str, int, int)]:
         num (int): 要获取的代理数量
 
     返回:
-        List[(str, int, int)]: 包含 IP、端口和过期时间的代理列表
+        List[Tuple[str, int, int]]: 包含 IP、端口和过期时间的代理列表
 
     示例:
         >>> proxies = await fetch_proxies(10)
@@ -60,25 +61,32 @@ async def fetch_proxies(num: int) -> List[(str, int, int)]:
 
     ip_infos = []
     async with httpx.AsyncClient() as client:
-        response = await client.get(host + "/api/getdps/", params=params)
+        try:
+            response = await client.get(host + "/api/getdps/", params=params)
 
-        if response.status_code != 200:
-            utils.logger.error(
-                f"[{brand} fetch_proxies] statuc code not 200 and response.txt:{response.text}"
-            )
+            print("==========proxy response", response)
+            if response.status_code != 200:
+                print(
+                    f"[{brand} fetch_proxies] 状态码不是200，响应内容：{response.text}"
+                )
+                return ip_infos
 
-        ip_response = response.json()
-        if ip_response.get("code") != 0:
-            utils.logger.error(
-                f"[{brand} fetch_proxies] code not 0 and msg:{ip_response.get('msg')}"
-            )
+            ip_response = response.json()
+            if ip_response.get("code") != 0:
+                print(
+                    f"[{brand} fetch_proxies] 代码不是0，错误信息：{ip_response}"
+                )
+                return ip_infos
 
-        proxy_list = ip_response.get("data", {}).get("proxy_list")
-        for item in proxy_list:
-            (ip, port, expire) = _parse_proxy_info(item)
-            ip_infos.append((ip, port, expire))
-
-    return ip_infos
+            proxy_list = ip_response.get("data", {}).get("proxy_list", [])
+            for item in proxy_list:
+                proxy_info = _parse_proxy_info(item)
+                if proxy_info:
+                    ip_infos.append(proxy_info)
+        except Exception as e:
+            print(f"[{brand} fetch_proxies] 发生异常：{str(e)}")
+        
+        return ip_infos
 
 
 def get_proxy_str(proxy: Tuple[str, int, int]) -> str:

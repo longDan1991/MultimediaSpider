@@ -20,37 +20,47 @@ async def get_account(request):
 
     cookies = await Cookies.all().filter(user=user)
 
-    user_data = {
-        "name": user.name,
-        "logtoId": user.logtoId
-    }
-
-    return response.json({
-        "data": {
-            "user": user_data,
-            "cookies": [{"id": cookie.id, "value": cookie.value} for cookie in cookies]
+    user_data = {"name": user.name, "logtoId": user.logtoId}
+    return response.json(
+        {
+            "data": {
+                "user": user_data,
+                "cookies": [
+                    {
+                        "id": cookie.id,
+                        "value": cookie.value,
+                        "platform": cookie.platform,
+                        "platform_account": cookie.platform_account
+                    } for cookie in cookies
+                ],
+            }
         }
-    })
+    )
+
 
 @account_bp.route("/store-cookie", methods=["POST"])
 async def store_cookie(request):
     data = request.json
     logtoId = data.get("logtoId")
     cookie_value = data.get("cookies")
-    url = data.get("url")
+    platform = data.get("platform")
 
     try:
         user = await Users.get(logtoId=logtoId)
     except DoesNotExist:
         return response.json({"message": "用户不存在"}, status=404)
 
-    try:
-        cookie = await Cookies.get(user=user, url=url)
+    cookies = await Cookies.filter(user=user, platform=platform)
+    if cookies:
+        cookie = cookies[0]
         cookie.value = cookie_value
-        await cookie.save() 
-    except DoesNotExist:
-        cookie = await Cookies.create(user=user, url=url, value=cookie_value) 
+        await cookie.save()
+    else:
+        cookie = await Cookies.create(user=user, platform=platform, value=cookie_value, platform_account=dict())
 
-    return response.json({
-        "data": cookie.id,
-    }, status=201)
+    return response.json(
+        {
+            "data": cookie.id,
+        },
+        status=201,
+    )

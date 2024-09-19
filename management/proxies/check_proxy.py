@@ -1,5 +1,6 @@
 import httpx
-from tools import utils
+
+from pkg.tools import utils 
 
 
 async def is_valid_proxy(proxy: str) -> bool:

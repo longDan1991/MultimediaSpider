@@ -1,10 +1,10 @@
 import random
-from typing import List
+from typing import List, Tuple
 
 from management.proxies.brand.fast import fetch_proxies, get_proxy_str
 from management.proxies.check_proxy import is_valid_proxy
-from tools import utils
-from redis import redis_client
+from pkg.tools import utils
+from helpers.redis import redis_client
 
 IpPoolCount = 2
 BrandProxy = "kuaidaili"
@@ -26,7 +26,7 @@ def _get_keys(pattern: str) -> List[str]:
     return [key.decode() for key in redis_client.keys(pattern)]
 
 
-def _get_all_ip(brand: str) -> List[(str, str, int)]:
+def _get_all_ip(brand: str) -> List[Tuple[str, int, int]]:
     """
     从Redis中获取指定品牌的所有尚未过期的IP信息
 

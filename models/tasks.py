@@ -10,7 +10,12 @@ class CrawlerType(Enum):
     CREATOR = "creator"  # 创作者主页数据
 
 class Platform(Enum):
-    XHS = "xhs"
+    XHS = "xhs"  # 小红书
+    DOUYIN = "douyin"  # 抖音
+    BILIBILI = "bilibili"  # bilibili
+    KUAISHOU = "kuaishou"  # 快手
+    TIEBA = "tieba"  # 贴吧
+    WEIBO = "weibo"  # 微博
 
 class TaskDetails(BaseModel):
     keywords: Optional[str] = ""

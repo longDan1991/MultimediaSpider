@@ -11,7 +11,9 @@ from pkg.tools import utils
 import config
 
 
-async def search(task: Tasks, cookies: str, callback: Optional[Callable] = None) -> None:
+async def search(
+    task: Tasks, cookies: str, callback: Optional[Callable] = None
+) -> None:
     """
     根据任务搜索笔记并获取评论信息。
     """
@@ -25,7 +27,9 @@ async def search(task: Tasks, cookies: str, callback: Optional[Callable] = None)
     for keyword in task_details.keywords.split(","):
         utils.logger.info(f"[search] 当前搜索关键词: {keyword}")
         page = task_details.start_page
-        while (page - task_details.start_page + 1) * page_size <= task_details.crawler_max_notes_count:
+        while (
+            page - task_details.start_page + 1
+        ) * page_size <= task_details.crawler_max_notes_count:
             try:
                 utils.logger.info(f"[search] 搜索小红书关键词: {keyword}, 页码: {page}")
                 note_ids: List[str] = []
@@ -71,6 +75,30 @@ async def search(task: Tasks, cookies: str, callback: Optional[Callable] = None)
                 return
 
 
+async def search_notes(
+    keyword: str,
+    cookies: str,
+    page: int = 1,
+    page_size: int = 20,
+    sort: SearchSortType = SearchSortType.GENERAL,
+    note_type: SearchNoteType = SearchNoteType.ALL,
+) -> Dict:
+    """
+    根据关键词搜索笔记
+    """
+    uri = "/api/sns/web/v1/search/notes"
+    data = {
+        "keyword": keyword,
+        "page": page,
+        "page_size": page_size,
+        "search_id": get_search_id(),
+        "sort": sort.value,
+        "note_type": note_type.value,
+    }
+    print("data======2", data)
+    return await post(uri, cookies, data)
+
+
 async def get_notes_by_keyword(
     keyword: str,
     page: int = 1,
@@ -103,7 +131,9 @@ async def get_note_detail(
         try:
             note_detail: Dict = await get_note_by_id(note_id, xsec_source, xsec_token)
             if not note_detail:
-                utils.logger.error(f"[get_note_detail] 获取笔记详情失败, note_id: {note_id}")
+                utils.logger.error(
+                    f"[get_note_detail] 获取笔记详情失败, note_id: {note_id}"
+                )
                 return None
             note_detail.update({"xsec_token": xsec_token, "xsec_source": xsec_source})
             return note_detail
@@ -111,7 +141,9 @@ async def get_note_detail(
             utils.logger.error(f"[get_note_detail] 获取笔记详情出错: {e}")
             return None
         except KeyError as e:
-            utils.logger.error(f"[get_note_detail] 未找到笔记详情 note_id:{note_id}, 错误: {e}")
+            utils.logger.error(
+                f"[get_note_detail] 未找到笔记详情 note_id:{note_id}, 错误: {e}"
+            )
             return None
 
 
@@ -139,7 +171,9 @@ async def batch_get_note_comments(note_ids: List[str]):
     """
     批量获取笔记评论
     """
-    utils.logger.info(f"[batch_get_note_comments] 开始批量获取笔记评论, 笔记列表: {note_ids}")
+    utils.logger.info(
+        f"[batch_get_note_comments] 开始批量获取笔记评论, 笔记列表: {note_ids}"
+    )
     semaphore = asyncio.Semaphore(1)
     tasks: List[asyncio.Task] = []
     for note_id in note_ids:
@@ -177,17 +211,26 @@ async def get_note_all_comments(
         has_more = comments_data.get("has_more", False)
         cursor = comments_data.get("cursor", "")
         if "comments" not in comments_data:
-            utils.logger.info(f"[get_note_all_comments] 响应中没有 'comments' 键: {comments_data}")
+            utils.logger.info(
+                f"[get_note_all_comments] 响应中没有 'comments' 键: {comments_data}"
+            )
             break
         comments = comments_data["comments"]
         if callback:
             await callback(note_id, comments)
         await asyncio.sleep(crawl_interval)
         result.extend(comments)
-        if config.PER_NOTE_MAX_COMMENTS_COUNT and len(result) >= config.PER_NOTE_MAX_COMMENTS_COUNT:
-            utils.logger.info(f"[get_note_all_comments] 评论数量超过限制: {config.PER_NOTE_MAX_COMMENTS_COUNT}")
+        if (
+            config.PER_NOTE_MAX_COMMENTS_COUNT
+            and len(result) >= config.PER_NOTE_MAX_COMMENTS_COUNT
+        ):
+            utils.logger.info(
+                f"[get_note_all_comments] 评论数量超过限制: {config.PER_NOTE_MAX_COMMENTS_COUNT}"
+            )
             break
-        sub_comments = await get_comments_all_sub_comments(comments, crawl_interval, callback)
+        sub_comments = await get_comments_all_sub_comments(
+            comments, crawl_interval, callback
+        )
         result.extend(sub_comments)
     return result
 
@@ -229,7 +272,9 @@ async def get_comments_all_sub_comments(
             has_more_sub_comments = sub_comments_data.get("has_more", False)
             sub_comment_cursor = sub_comments_data.get("cursor", "")
             if "comments" not in sub_comments_data:
-                utils.logger.info(f"[get_comments_all_sub_comments] 响应中没有 'comments' 键: {sub_comments_data}")
+                utils.logger.info(
+                    f"[get_comments_all_sub_comments] 响应中没有 'comments' 键: {sub_comments_data}"
+                )
                 break
             sub_comments = sub_comments_data["comments"]
             if callback:

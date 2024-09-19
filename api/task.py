@@ -2,7 +2,7 @@ from asyncio import create_task
 import math
 from sanic import Blueprint, response
 from helpers.authenticated import authenticated
-from management.medium.xhs.actions import search
+# from management.medium.xhs.actions import search
 from models.cookies import Cookies
 from models.users import Users
 from models.tasks import Tasks, TaskDetails
@@ -55,15 +55,15 @@ async def create_task1(request):
     except DoesNotExist:
         return response.json({"message": "用户不存在"}, status=404)
 
-    create_task(
-        search(
-            new_task,
-            cookies[0],
-            callback=lambda task, result: (
-                print(f"任务 {task.id} 完成"),
-                print(f"结果: {result}"),
-            ),
-        )
-    )
+    # create_task(
+    #     search(
+    #         new_task,
+    #         cookies[0],
+    #         callback=lambda task, result: (
+    #             print(f"任务 {task.id} 完成"),
+    #             print(f"结果: {result}"),
+    #         ),
+    #     )
+    # )
 
     return response.json({"task_id": new_task.id}, status=201)
