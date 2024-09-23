@@ -23,6 +23,7 @@ dependencies = [
     "tortoise-orm>=0.21.6",
     "sanic-session>=0.8.0",
     "PyExecJS>=1.5.1",
+    "apscheduler>=3.10.4",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

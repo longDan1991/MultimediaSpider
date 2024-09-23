@@ -2,7 +2,7 @@ from tortoise import Model, fields
 
 
 class Cookies(Model):
-    id = fields.IntField(pk=True)
+    id = fields.IntField(primary_key=True)
     user = fields.ForeignKeyField("models.Users", related_name="user")
     value = fields.TextField()
     platform = fields.CharField(50)

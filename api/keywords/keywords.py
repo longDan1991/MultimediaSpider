@@ -1,10 +1,10 @@
 from sanic import Blueprint, response
+from api.keywords.search_task import xhs_notes_task
 from helpers.authenticated import authenticated
 from management.medium.xhs.actions.search import search_notes
 from models.cookies import Cookies
 from models.keywords import Keywords
 from tortoise.exceptions import DoesNotExist
-
 from models.tasks import Platform
 from models.users import Users
 
@@ -31,7 +31,7 @@ async def get_keywords(request):
                     "is_deleted": keyword.is_deleted,
                     "created_at": keyword.created_at.isoformat(),
                     "updated_at": keyword.updated_at.isoformat(),
-                    "search_results": keyword.search_results,
+                    "platforms": keyword.platforms,
                 }
                 for keyword in keywords
             ],
@@ -52,9 +52,9 @@ async def create_keyword(request):
     value = data.get("value")
     is_monitored = data.get("is_monitored", True)
     is_deleted = data.get("is_deleted", False)
-    search_results = data.get("search_results", {})
+    platforms = data.get("platforms", [])
 
-    if not search_results:
+    if not platforms:
         return response.json({"message": "至少选择一个平台"}, status=400)
 
     logto = request.ctx.user
@@ -63,24 +63,18 @@ async def create_keyword(request):
     except DoesNotExist:
         return response.json({"message": "用户不存在"}, status=404)
 
-    if (
-        Platform.XHS.value in search_results
-        or Platform.XHS.value in search_results.keys()
-    ):
-        print("xhs_results======1", search_results)
+    if Platform.XHS.value in platforms:
         cookies = await Cookies.filter(user=user, platform=Platform.XHS.value)
         if not cookies:
             return response.json({"message": "未找到小红书cookie"}, status=404)
-        xhs_results = await search_notes(value, cookies[0].value)
-        print("xhs_results======20", xhs_results)
-        if xhs_results:
-            search_results[Platform.XHS.value] = xhs_results
+
+        request.app.add_task(xhs_notes_task(value, cookies), name="_xhs_notes_task")
 
     keyword = await Keywords.create(
         value=value,
         is_monitored=is_monitored,
         is_deleted=is_deleted,
-        search_results=search_results,
+        platforms=platforms,
         user=user,
     )
 
@@ -93,7 +87,7 @@ async def create_keyword(request):
                 "is_deleted": keyword.is_deleted,
                 "created_at": keyword.created_at.isoformat(),
                 "updated_at": keyword.updated_at.isoformat(),
-                "search_results": keyword.search_results,
+                "platforms": keyword.platforms,
             }
         },
         status=201,
@@ -108,6 +102,7 @@ async def update_keyword(request, keyword_id):
         keyword = await Keywords.get(id=keyword_id)
         keyword.value = data.get("value", keyword.value)
         keyword.is_monitored = data.get("is_monitored", keyword.is_monitored)
+        keyword.platforms = data.get("platforms", keyword.platforms)
         await keyword.save()
         return response.json(
             {
@@ -115,6 +110,7 @@ async def update_keyword(request, keyword_id):
                     "id": keyword.id,
                     "value": keyword.value,
                     "is_monitored": keyword.is_monitored,
+                    "platforms": keyword.platforms,
                 }
             }
         )
