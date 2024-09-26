@@ -10,6 +10,7 @@ class Keywords(Model):
     updated_at = fields.DatetimeField(auto_now=True)
     platforms = fields.JSONField(default=list)
     user = fields.ForeignKeyField("models.Users", related_name="keywords")
+    last_search = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
         table = "keywords"

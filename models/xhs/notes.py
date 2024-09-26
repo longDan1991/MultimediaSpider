@@ -18,6 +18,9 @@ class XHSNotes(Model):
     liked = fields.BooleanField()
     liked_count = fields.CharField(max_length=50) 
     
+    # 搜索关键字字段
+    search_keyword = fields.CharField(max_length=255, null=True)
+    
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 

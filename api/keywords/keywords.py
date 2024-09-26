@@ -1,12 +1,11 @@
-from sanic import Blueprint, response
-from api.keywords.search_task import xhs_notes_task
-from helpers.authenticated import authenticated
-from management.medium.xhs.actions.search import search_notes
+from sanic import Blueprint, response 
+from helpers.authenticated import authenticated 
 from models.cookies import Cookies
 from models.keywords import Keywords
 from tortoise.exceptions import DoesNotExist
 from models.tasks import Platform
 from models.users import Users
+from api.keywords.search_task import schedule_notes_task
 
 keywords_bp = Blueprint("keywords", url_prefix="/keywords")
 
@@ -68,7 +67,7 @@ async def create_keyword(request):
         if not cookies:
             return response.json({"message": "未找到小红书cookie"}, status=404)
 
-        request.app.add_task(xhs_notes_task(value, cookies), name="_xhs_notes_task")
+        schedule_notes_task(value, cookies[0].value)
 
     keyword = await Keywords.create(
         value=value,
@@ -79,17 +78,15 @@ async def create_keyword(request):
     )
 
     return response.json(
-        {
-            "data": {
-                "id": keyword.id,
-                "value": keyword.value,
-                "is_monitored": keyword.is_monitored,
-                "is_deleted": keyword.is_deleted,
-                "created_at": keyword.created_at.isoformat(),
-                "updated_at": keyword.updated_at.isoformat(),
-                "platforms": keyword.platforms,
-            }
-        },
+        {"data": {
+            "id": keyword.id,
+            "value": keyword.value,
+            "is_monitored": keyword.is_monitored,
+            "is_deleted": keyword.is_deleted,
+            "created_at": keyword.created_at.isoformat(),
+            "updated_at": keyword.updated_at.isoformat(),
+            "platforms": keyword.platforms,
+        }},
         status=201,
     )
 
