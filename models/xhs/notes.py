@@ -1,7 +1,9 @@
 from tortoise import Model, fields
 
 class XHSNotes(Model):
-    id = fields.CharField(max_length=255, primary_key=True)
+    id = fields.IntField(primary_key=True)
+    notes_id = fields.CharField(max_length=255, unique=True)
+
     model_type = fields.CharField(max_length=50)
     xsec_token = fields.CharField(max_length=255)
     
@@ -18,12 +20,9 @@ class XHSNotes(Model):
     liked = fields.BooleanField()
     liked_count = fields.CharField(max_length=50) 
     
-    # 搜索关键字字段
-    search_keyword = fields.CharField(max_length=255, null=True)
-    
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
     class Meta:
-        table = "xhs_notes"
+        table = "xhs_notes" 
 

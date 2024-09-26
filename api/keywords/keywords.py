@@ -1,9 +1,10 @@
-from sanic import Blueprint, response 
-from helpers.authenticated import authenticated 
+from sanic import Blueprint, response
+from helpers.authenticated import authenticated
 from models.cookies import Cookies
 from models.keywords import Keywords
 from tortoise.exceptions import DoesNotExist
 from models.tasks import Platform
+from models.user_keyword import UserKeyword
 from models.users import Users
 from api.keywords.search_task import schedule_notes_task
 
@@ -17,22 +18,28 @@ async def get_keywords(request):
     page_size = int(request.args.get("page_size", 10))
     offset = (page - 1) * page_size
 
-    total_count = await Keywords.all().count()
-    keywords = await Keywords.all().offset(offset).limit(page_size)
+    logto = request.ctx.user
+    try:
+        user = await Users.get(logtoId=logto["sub"])
+    except DoesNotExist:
+        return response.json({"message": "用户不存在"}, status=404)
+
+    total_count = await UserKeyword.filter(user=user).count()
+    user_keywords = await UserKeyword.filter(user=user).offset(offset).limit(page_size).prefetch_related('keyword')
 
     return response.json(
         {
             "data": [
                 {
-                    "id": keyword.id,
-                    "value": keyword.value,
-                    "is_monitored": keyword.is_monitored,
-                    "is_deleted": keyword.is_deleted,
-                    "created_at": keyword.created_at.isoformat(),
-                    "updated_at": keyword.updated_at.isoformat(),
-                    "platforms": keyword.platforms,
+                    "id": uk.keyword.id,
+                    "value": uk.keyword.value,
+                    "is_monitored": uk.is_monitored,
+                    "created_at": uk.created_at.isoformat(),
+                    "updated_at": uk.updated_at.isoformat(),
+                    "platforms": uk.platforms,
+                    "platform_info": uk.keyword.platform_info,
                 }
-                for keyword in keywords
+                for uk in user_keywords
             ],
             "pagination": {
                 "total": total_count,
@@ -43,14 +50,12 @@ async def get_keywords(request):
         }
     )
 
-
 @keywords_bp.route("/", methods=["POST"])
 @authenticated()
 async def create_keyword(request):
     data = request.json
     value = data.get("value")
     is_monitored = data.get("is_monitored", True)
-    is_deleted = data.get("is_deleted", False)
     platforms = data.get("platforms", [])
 
     if not platforms:
@@ -60,33 +65,36 @@ async def create_keyword(request):
     try:
         user = await Users.get(logtoId=logto["sub"])
     except DoesNotExist:
-        return response.json({"message": "用户不存在"}, status=404)
+        return response.json({"message": "用户不存在"}, status=404) 
 
-    if Platform.XHS.value in platforms:
-        cookies = await Cookies.filter(user=user, platform=Platform.XHS.value)
-        if not cookies:
-            return response.json({"message": "未找到小红书cookie"}, status=404)
-
-        schedule_notes_task(value, cookies[0].value)
-
-    keyword = await Keywords.create(
-        value=value,
-        is_monitored=is_monitored,
-        is_deleted=is_deleted,
-        platforms=platforms,
+    keyword, created = await Keywords.get_or_create(value=value)
+    
+    user_keyword, created = await UserKeyword.get_or_create(
         user=user,
+        keyword=keyword,
+        defaults={
+            "is_monitored": is_monitored,
+            "platforms": platforms
+        }
     )
 
+    if not created:
+        return response.json({"message": "该关键词已存在"}, status=400)
+
+    await schedule_notes_task(keyword, user)
+
     return response.json(
-        {"data": {
-            "id": keyword.id,
-            "value": keyword.value,
-            "is_monitored": keyword.is_monitored,
-            "is_deleted": keyword.is_deleted,
-            "created_at": keyword.created_at.isoformat(),
-            "updated_at": keyword.updated_at.isoformat(),
-            "platforms": keyword.platforms,
-        }},
+        {
+            "data": {
+                "id": keyword.id,
+                "value": keyword.value,
+                "is_monitored": user_keyword.is_monitored,
+                "created_at": user_keyword.created_at.isoformat(),
+                "updated_at": user_keyword.updated_at.isoformat(),
+                "platforms": user_keyword.platforms,
+                "platform_info": keyword.platform_info,
+            }
+        },
         status=201,
     )
 
@@ -95,19 +103,21 @@ async def create_keyword(request):
 @authenticated()
 async def update_keyword(request, keyword_id):
     data = request.json
+    logto = request.ctx.user
     try:
-        keyword = await Keywords.get(id=keyword_id)
-        keyword.value = data.get("value", keyword.value)
-        keyword.is_monitored = data.get("is_monitored", keyword.is_monitored)
-        keyword.platforms = data.get("platforms", keyword.platforms)
-        await keyword.save()
+        user = await Users.get(logtoId=logto["sub"])
+        user_keyword = await UserKeyword.get(user=user, keyword_id=keyword_id)
+        user_keyword.is_monitored = data.get("is_monitored", user_keyword.is_monitored)
+        user_keyword.platforms = data.get("platforms", user_keyword.platforms)
+        await user_keyword.save()
         return response.json(
             {
                 "data": {
-                    "id": keyword.id,
-                    "value": keyword.value,
-                    "is_monitored": keyword.is_monitored,
-                    "platforms": keyword.platforms,
+                    "id": user_keyword.keyword.id,
+                    "value": user_keyword.keyword.value,
+                    "is_monitored": user_keyword.is_monitored,
+                    "platforms": user_keyword.platforms,
+                    "platform_info": user_keyword.keyword.platform_info,
                 }
             }
         )
@@ -118,9 +128,11 @@ async def update_keyword(request, keyword_id):
 @keywords_bp.route("/<keyword_id:int>", methods=["DELETE"])
 @authenticated()
 async def delete_keyword(request, keyword_id):
+    logto = request.ctx.user
     try:
-        keyword = await Keywords.get(id=keyword_id)
-        await keyword.delete()
+        user = await Users.get(logtoId=logto["sub"])
+        user_keyword = await UserKeyword.get(user=user, keyword_id=keyword_id)
+        await user_keyword.delete()
         return response.json({"message": "关键词已删除"})
     except DoesNotExist:
         return response.json({"message": "关键词不存在"}, status=404)

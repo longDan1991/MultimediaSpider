@@ -6,4 +6,5 @@ sanic_models = [
     "models.keywords",
     "models.cursor",
     "models.xhs.notes",
+    "models.xhs.keyword_notes",
 ]
