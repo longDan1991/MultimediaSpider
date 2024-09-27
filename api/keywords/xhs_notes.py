@@ -1,7 +1,6 @@
-from management.medium.xhs.actions.search import search_notes
+from management.medium.xhs.actions.notes import search_notes
 from models.cookies import Cookies
-from models.keywords import Keywords
-from models.tasks import Platform
+from models.other.platform import Platform, PlatformStatus
 from models.xhs.notes import XHSNotes
 from models.xhs.keyword_notes import KeywordNotes
 import asyncio
@@ -13,14 +12,15 @@ from datetime import datetime, timedelta
 async def notes_task(keyword, user):
     cookies = await Cookies.filter(user=user, platform=Platform.XHS.value)
     if not cookies:
+        await app.cancel_task(f"_notes_task_{keyword.id}")
         return True
 
     cookie = cookies[0].value
-    keyword_value = keyword.value
 
-    platform_info = keyword.platform_info.get("xhs", {})
-    last_update = platform_info.get("last_update")
-    last_page = platform_info.get("last_page", 0)
+    platform_info = keyword.platform_info.get(Platform.XHS.value, PlatformStatus())
+    last_update = platform_info.last_update
+    last_page = platform_info.last_page
+    max_page = platform_info.max_page
 
     # 检查是否在一天内更新过
     if last_update and datetime.now() - datetime.fromisoformat(last_update) < timedelta(
@@ -30,17 +30,17 @@ async def notes_task(keyword, user):
     else:
         start_page = 1
 
-    for page in range(start_page, 11):
+    for page in range(start_page, max_page):
         if await _process_page(cookie, page, keyword):
             break
 
         # 更新平台信息
-        platform_info["last_update"] = datetime.now().isoformat()
-        platform_info["last_page"] = page
-        keyword.platform_info["xhs"] = platform_info
+        platform_info.last_update = datetime.now().isoformat()
+        platform_info.last_page = page
+        keyword.platform_info[Platform.XHS.value] = platform_info
         await keyword.save()
 
-    app.cancel_task(f"_notes_task_{keyword_value}")
+    await app.cancel_task(f"_notes_task_{keyword.id}")
     return True
 
 

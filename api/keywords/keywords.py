@@ -1,12 +1,10 @@
 from sanic import Blueprint, response
+from api.keywords.search_task import schedule_search_task
 from helpers.authenticated import authenticated
-from models.cookies import Cookies
 from models.keywords import Keywords
 from tortoise.exceptions import DoesNotExist
-from models.tasks import Platform
 from models.user_keyword import UserKeyword
 from models.users import Users
-from api.keywords.search_task import schedule_notes_task
 
 keywords_bp = Blueprint("keywords", url_prefix="/keywords")
 
@@ -14,9 +12,8 @@ keywords_bp = Blueprint("keywords", url_prefix="/keywords")
 @keywords_bp.route("/", methods=["GET"])
 @authenticated()
 async def get_keywords(request):
-    page = int(request.args.get("page", 1))
-    page_size = int(request.args.get("page_size", 10))
-    offset = (page - 1) * page_size
+    page = request.args.get("page")
+    page_size = request.args.get("page_size")
 
     logto = request.ctx.user
     try:
@@ -24,31 +21,43 @@ async def get_keywords(request):
     except DoesNotExist:
         return response.json({"message": "用户不存在"}, status=404)
 
-    total_count = await UserKeyword.filter(user=user).count()
-    user_keywords = await UserKeyword.filter(user=user).offset(offset).limit(page_size).prefetch_related('keyword')
+    query = UserKeyword.filter(user=user).prefetch_related("keyword")
 
-    return response.json(
+    if page and page_size:
+        page = int(page)
+        page_size = int(page_size)
+        offset = (page - 1) * page_size
+        total_count = await query.count()
+        user_keywords = await query.offset(offset).limit(page_size)
+    else:
+        total_count = await query.count()
+        user_keywords = await query
+
+    data = [
         {
-            "data": [
-                {
-                    "id": uk.keyword.id,
-                    "value": uk.keyword.value,
-                    "is_monitored": uk.is_monitored,
-                    "created_at": uk.created_at.isoformat(),
-                    "updated_at": uk.updated_at.isoformat(),
-                    "platforms": uk.platforms,
-                    "platform_info": uk.keyword.platform_info,
-                }
-                for uk in user_keywords
-            ],
-            "pagination": {
-                "total": total_count,
-                "page": page,
-                "page_size": page_size,
-                "total_pages": (total_count + page_size - 1) // page_size,
-            },
+            "id": uk.keyword.id,
+            "value": uk.keyword.value,
+            "is_monitored": uk.is_monitored,
+            "created_at": uk.created_at.isoformat(),
+            "updated_at": uk.updated_at.isoformat(),
+            "platforms": uk.platforms,
+            "platform_info": uk.keyword.platform_info,
         }
-    )
+        for uk in user_keywords
+    ]
+
+    response_data = {"data": data}
+
+    if page and page_size:
+        response_data["pagination"] = {
+            "total": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total_count + page_size - 1) // page_size,
+        }
+
+    return response.json(response_data, status=200)
+
 
 @keywords_bp.route("/", methods=["POST"])
 @authenticated()
@@ -65,23 +74,20 @@ async def create_keyword(request):
     try:
         user = await Users.get(logtoId=logto["sub"])
     except DoesNotExist:
-        return response.json({"message": "用户不存在"}, status=404) 
+        return response.json({"message": "用户不存在"}, status=404)
 
-    keyword, created = await Keywords.get_or_create(value=value)
-    
+    keyword, _ = await Keywords.get_or_create(value=value)
+
     user_keyword, created = await UserKeyword.get_or_create(
         user=user,
         keyword=keyword,
-        defaults={
-            "is_monitored": is_monitored,
-            "platforms": platforms
-        }
+        defaults={"is_monitored": is_monitored, "platforms": platforms},
     )
 
     if not created:
         return response.json({"message": "该关键词已存在"}, status=400)
 
-    await schedule_notes_task(keyword, user)
+    schedule_search_task(keyword, user, platforms)
 
     return response.json(
         {
@@ -116,10 +122,13 @@ async def update_keyword(request, keyword_id):
                     "id": user_keyword.keyword.id,
                     "value": user_keyword.keyword.value,
                     "is_monitored": user_keyword.is_monitored,
+                    "created_at": user_keyword.created_at.isoformat(),
+                    "updated_at": user_keyword.updated_at.isoformat(),
                     "platforms": user_keyword.platforms,
                     "platform_info": user_keyword.keyword.platform_info,
                 }
-            }
+            },
+            status=200,
         )
     except DoesNotExist:
         return response.json({"message": "关键词不存在"}, status=404)

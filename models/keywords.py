@@ -1,6 +1,5 @@
 from tortoise import Model, fields
 
-
 class Keywords(Model):
     id = fields.IntField(primary_key=True)
     value = fields.CharField(max_length=255)

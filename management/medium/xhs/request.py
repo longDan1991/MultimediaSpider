@@ -4,16 +4,29 @@ from typing import Union, Dict
 import json
 import httpx
 import execjs
+from enum import Enum
+from typing import NamedTuple
 
 from tenacity import RetryError
 from httpx import RequestError, Response
 from management.proxies.proxy import get_proxy
 import traceback
+from urllib.parse import urlencode
 
 
-from media_platform.xhs.exception import (
-    ErrorEnum,
-)
+class ErrorTuple(NamedTuple):
+    code: int
+    msg: str
+
+
+class ErrorEnum(Enum):
+    IP_BLOCK = ErrorTuple(300012, "网络连接异常，请检查网络设置或重启试试")
+    NOTE_ABNORMAL = ErrorTuple(-510001, "笔记状态异常，请稍后查看")
+    NOTE_SECRETE_FAULT = ErrorTuple(-510001, "当前内容无法展示")
+    SIGN_FAULT = ErrorTuple(300015, "浏览器异常，请尝试关闭/卸载风险插件或重启试试！")
+    SESSION_EXPIRED = ErrorTuple(-100, "登录已过期")
+    ACCEESS_FREQUENCY_ERROR = ErrorTuple(300013, "访问频次异常，请勿频繁操作或重启试试")
+
 
 _XHS_API_URL = "https://edith.xiaohongshu.com"
 _XHS_INDEX_URL = "https://www.xiaohongshu.com"
@@ -61,7 +74,7 @@ async def request(method, url, **kwargs) -> Union[Response, Dict]:
     elif data.get("code") == ErrorEnum.ACCEESS_FREQUENCY_ERROR.value.code:
         # 访问频次异常, 再随机延时一下
         print(f"[XiaoHongShuClient.request] 访问频次异常，尝试随机延时一下...")
-        await asyncio.sleep(random.randint(2, 10))
+        # await asyncio.sleep(random.randint(2, 10))
         raise RequestError(ErrorEnum.ACCEESS_FREQUENCY_ERROR.value.msg)
     else:
         raise RequestError(data)
@@ -101,26 +114,23 @@ async def post(uri: str, cookies: str, data: dict, **kwargs) -> Union[Dict, Resp
             **kwargs,
         )
         return res
-    except RetryError as e:
-        # 获取原始异常
-        original_exception = e.last_attempt.exception()
-        traceback.print_exception(
-            type(original_exception),
-            original_exception,
-            original_exception.__traceback__,
-        )
+    except Exception as e:
+        print(f"[request.post] 请求出错: {uri}")
+        print(f"错误信息: {str(e)}")
+        raise
 
-        print(
-            f"[XiaoHongShuClient.post] 重试了5次:{uri} 请求，均失败了，尝试更换账号与IP再次发起重试"
+
+async def get(uri: str, params=None, **kwargs) -> Union[Response, Dict]:
+    final_uri = uri
+    if isinstance(params, dict):
+        final_uri = f"{uri}?" f"{urlencode(params)}"
+    try:
+        headers = await _pre_headers(final_uri)
+        res = await request(
+            method="GET", url=f"{_XHS_API_URL}{final_uri}", headers=headers, **kwargs
         )
-        # 如果重试了5次次都还是异常了，那么尝试更换账号信息
-        # await self.mark_account_invalid(self.account_info)
-        # await self.update_account_info()
-        # headers = await self._pre_headers(uri, data)
-        # return await self.request(
-        #     method="POST",
-        #     url=f"{XHS_API_URL}{uri}",
-        #     data=json_str,
-        #     headers=headers,
-        #     **kwargs,
-        # )
+        return res
+    except Exception as e:
+        print(f"[request.get] 请求出错: {uri}")
+        print(f"错误信息: {str(e)}")
+        raise
