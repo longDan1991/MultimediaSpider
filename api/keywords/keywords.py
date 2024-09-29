@@ -1,12 +1,38 @@
+import datetime
 from sanic import Blueprint, response
 from api.keywords.search_task import schedule_search_task
 from helpers.authenticated import authenticated
-from models.keywords import Keywords
 from tortoise.exceptions import DoesNotExist
+from models.keywords import Keywords
+from models.other.platform import Platform, PlatformStatus
 from models.user_keyword import UserKeyword
 from models.users import Users
+from helpers.celery import celeryApp
 
 keywords_bp = Blueprint("keywords", url_prefix="/keywords")
+
+
+@celeryApp.task
+async def create_keyword_in_queue(value):
+    keyword, created = await Keywords.get_or_create(value=value)
+
+    if created:
+        # 如果是新创建的关键词，初始化所有平台的platform_info
+        keyword.platform_info = {
+            platform.value: PlatformStatus().model_dump() for platform in Platform
+        }
+    else:
+        # 如果关键词已存在，更新每个平台的last_update
+        for platform in Platform:
+            platform_info = keyword.platform_info.get(
+                platform.value, PlatformStatus().model_dump()
+            )
+            platform_info["last_update"] = datetime.now().isoformat()
+            platform_info["start_page"] += platform_info["max_page"]
+            keyword.platform_info[platform.value] = platform_info
+
+    await keyword.save()
+    return keyword
 
 
 @keywords_bp.route("/", methods=["GET"])
@@ -76,7 +102,8 @@ async def create_keyword(request):
     except DoesNotExist:
         return response.json({"message": "用户不存在"}, status=404)
 
-    keyword, _ = await Keywords.get_or_create(value=value)
+    keyword_task = create_keyword_in_queue.delay(value)
+    keyword = await keyword_task.get()
 
     user_keyword, created = await UserKeyword.get_or_create(
         user=user,

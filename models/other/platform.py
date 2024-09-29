@@ -15,5 +15,6 @@ class PlatformStatus(BaseModel):
     max_page: Optional[int] = 11
     last_update: Optional[str] = ""
     last_page: Optional[int] = 0
+    start_page: Optional[int] = 1
 
 PlatformInfo = Dict[Platform, PlatformStatus]
