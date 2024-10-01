@@ -25,7 +25,7 @@ class SearchNoteType(Enum):
     VIDEO = 1
     # only image
     IMAGE = 2
-    
+
 
 class XHSNotes(Model):
     id = fields.IntField(primary_key=True)
@@ -49,6 +49,10 @@ class XHSNotes(Model):
     
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+    
+    comments_cursor = fields.CharField(max_length=24, null=True)
+    comments_has_more = fields.BooleanField()
+    comments_call_times = fields.IntField(default=0)
 
     class Meta:
         table = "xhs_notes" 

@@ -7,13 +7,10 @@ from models.keywords import Keywords
 from models.other.platform import Platform, PlatformStatus
 from models.user_keyword import UserKeyword
 from models.users import Users
-from helpers.celery import celeryApp
-
+from helpers.queue import enqueue_task
 keywords_bp = Blueprint("keywords", url_prefix="/keywords")
 
-
-@celeryApp.task
-async def create_keyword_in_queue(value):
+async def _create_keyword_in_queue(value):
     keyword, created = await Keywords.get_or_create(value=value)
 
     if created:
@@ -92,7 +89,8 @@ async def create_keyword(request):
     value = data.get("value")
     is_monitored = data.get("is_monitored", True)
     platforms = data.get("platforms", [])
-
+    sub_keywords = data.get("sub_keywords", [])
+    
     if not platforms:
         return response.json({"message": "至少选择一个平台"}, status=400)
 
@@ -101,20 +99,19 @@ async def create_keyword(request):
         user = await Users.get(logtoId=logto["sub"])
     except DoesNotExist:
         return response.json({"message": "用户不存在"}, status=404)
-
-    keyword_task = create_keyword_in_queue.delay(value)
-    keyword = await keyword_task.get()
+ 
+    keyword = await enqueue_task(_create_keyword_in_queue)(value)
 
     user_keyword, created = await UserKeyword.get_or_create(
         user=user,
         keyword=keyword,
-        defaults={"is_monitored": is_monitored, "platforms": platforms},
+        defaults={"is_monitored": is_monitored, "platforms": platforms, "sub_keywords": sub_keywords},
     )
 
     if not created:
         return response.json({"message": "该关键词已存在"}, status=400)
 
-    schedule_search_task(keyword, user, platforms)
+    await schedule_search_task(keyword, user, platforms)
 
     return response.json(
         {

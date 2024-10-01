@@ -5,15 +5,13 @@ from models.xhs.notes import XHSNotes
 from models.xhs.keyword_notes import KeywordNotes
 import asyncio
 import random
-from helpers.sanic import app
-from helpers.celery import celeryApp
 from models.keywords import Keywords
-
+from helpers.queue import enqueue_task
+from api.keywords.xhs_comments import process_comments
 
 async def notes_task(keyword, user):
     cookies = await Cookies.filter(user=user, platform=Platform.XHS.value)
     if not cookies:
-        await app.cancel_task(f"_notes_task_{keyword.id}")
         return True
 
     cookie = cookies[0].value
@@ -26,7 +24,6 @@ async def notes_task(keyword, user):
         if await _process_page(cookie, page, keyword):
             break
 
-    await app.cancel_task(f"_notes_task_{keyword.id}")
     return True
 
 
@@ -38,7 +35,10 @@ async def _process_page(cookie, page, keyword):
 
     notes_to_upsert = _extract_notes(results)
     if notes_to_upsert:
-        await _upsert_notes_in_queue.delay(notes_to_upsert, keyword.id)
+        await enqueue_task(_upsert_notes_in_queue, wait_for_result=False)(
+            notes_to_upsert,
+            keyword.id,
+        )
 
     return not results.get("has_more", False)
 
@@ -67,7 +67,6 @@ def _extract_notes(results):
     return notes_to_upsert
 
 
-@celeryApp.task
 async def _upsert_notes_in_queue(notes_to_upsert, keyword_id):
     try:
         # 批量创建或更新 XHSNotes
@@ -88,6 +87,7 @@ async def _upsert_notes_in_queue(notes_to_upsert, keyword_id):
 
         if notes_to_create:
             await XHSNotes.bulk_create(notes_to_create)
+            asyncio.create_task(process_comments([note["notes_id"] for note in notes_to_create], keyword_id))
         if notes_to_update:
             await XHSNotes.bulk_update(
                 notes_to_update,

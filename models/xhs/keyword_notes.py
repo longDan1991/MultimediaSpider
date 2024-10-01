@@ -1,6 +1,4 @@
-from tortoise import Model, fields
-from models.xhs.notes import XHSNotes
-from models.keywords import Keywords
+from tortoise import Model, fields 
 
 class KeywordNotes(Model):
     id = fields.IntField(pk=True)

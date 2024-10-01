@@ -9,6 +9,7 @@ class UserKeyword(Model):
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
     platforms = fields.JSONField(default=list)
+    sub_keywords = fields.JSONField(default=list)
 
     class Meta:
         table = "user_keyword"
